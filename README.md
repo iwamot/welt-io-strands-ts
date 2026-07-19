@@ -1,48 +1,82 @@
-# repo-template
+# @welt-io/strands
 
-Starter template for repositories in iwamot's ecosystem.
+[![npm](https://img.shields.io/npm/v/%40welt-io%2Fstrands.svg)](https://www.npmjs.com/package/@welt-io/strands)
+[![node](https://img.shields.io/node/v/%40welt-io%2Fstrands.svg)](https://www.npmjs.com/package/@welt-io/strands)
 
-## Files
+The [Strands Agents](https://strandsagents.com/) (TypeScript) adapter for [Welt](https://github.com/iwamot/welt)'s wire contract — one of Welt's [agent-side adapters](https://github.com/iwamot/welt#agent-side-adapters), and the TypeScript counterpart of [welt-io](https://github.com/iwamot/welt-io), the Python Strands adapter.
 
-| Path | Purpose |
-|------|---------|
-| `.github/Oidefile` | Manifest of files this template distributes. `oide.yml` pulls every listed path into derived repos. |
-| `.github/release.yml` | GitHub auto-generated release notes categorization (Features / Dependencies). |
-| `.github/renovate.json` | Extends the `iwamot/renovate-config` preset. |
-| `.github/workflows/auto-label.yml` | Labels PRs from their Conventional Commit title. |
-| `.github/workflows/dco.yml` | Checks that every PR commit carries a DCO sign-off. |
-| `.github/workflows/dependabot-auto-merge.yml` | Auto-merges Dependabot PRs. |
-| `.github/workflows/dependency-review.yml` | Vulnerability and license review on PRs. |
-| `.github/workflows/oide.yml` | Pulls the files listed in `.github/Oidefile` from this template. See [Staying in sync](#staying-in-sync). |
-| `.github/workflows/release.yml` | Creates a GitHub Release when a `v*` tag is pushed. |
-| `.github/workflows/renovate.yml` | Self-hosted Renovate runner (hourly + on push to main). |
-| `.github/workflows/validate.yml` | Runs `validate.sh` on push and PR via `iwamot/workflows`. |
-| `CONTRIBUTING.md` | Contribution guide: local setup, DCO, and Conventional Commits. |
-| `LICENSE` | Project license. |
-| `SECURITY.md` | Minimal security policy. Directs vulnerability reports to GitHub Security Advisories. |
-| `mise.toml` | Pins mise minimum version and includes shared tasks from `iwamot/mise-tasks`. |
-| `validate.sh` | Lint entry point invoked by `iwamot/actions/mise-validate`. Add repo-specific lint at the marked location. |
+## Install
 
-## Staying in sync
+```bash
+npm install @welt-io/strands
+```
 
-This template owns the shared governance files — the paths listed in `.github/Oidefile`. Derived repositories track it through two automated flows:
+## Usage
 
-- **Governance files** — `.github/workflows/oide.yml` runs [`iwamot/oide`](https://github.com/iwamot/oide), which pulls every path listed in `.github/Oidefile` from this template and opens a PR. Its `TEMPLATE_VERSION` pin is tracked by Renovate, so tagging a new template release bumps the pin, which triggers the pull. `.github/Oidefile` lists itself, so adding a path to the template's manifest propagates to every derived repo in one pull.
-- **Version pins** — Renovate keeps the action SHAs in `.github/workflows/*.yml` and the task ref in `mise.toml` current.
+See [`examples/agent`](examples/agent) — the smallest complete agent built on this package (text streaming, tool use, file output, file input, and a human-approval tool). The sections below explain the adapters it wires in.
 
-## Post-creation setup
+## API
 
-After clicking **Use this template**:
+The wire between Welt and the agent is JSON, specified by [Welt's wire contract](https://github.com/iwamot/welt/blob/main/docs/wire.md). Strands speaks nearly the same shapes, but not exactly, in either direction. Two functions adapt the inbound payload, three the outbound stream.
 
-1. **Replace this README.md** with the new repository's own description.
-2. **Install the Renovate App** (or your self-hosted equivalent) for the new repo.
-3. **Create a GitHub Environment** for Renovate (default name: `production`, override via the `environment` input on `renovate.yml` if needed) and add environment-scoped secrets:
-   - `RENOVATE_APP_CLIENT_ID`
-   - `RENOVATE_APP_PRIVATE_KEY`
-4. **Add a release workflow** if the repo ships artifacts. These also take an `environment` input — create additional environments as needed:
-   - `iwamot/workflows/.github/workflows/release-ghcr.yml` for GHCR
-   - `iwamot/workflows/.github/workflows/release-ecr-public.yml` for ECR Public
-   - `iwamot/workflows/.github/workflows/release-homebrew-tap.yml` for Homebrew tap
-5. **Add language-specific files** as needed: `Dockerfile`, `package.json`, `pyproject.toml`, `.gitignore`, etc.
-6. **Extend `validate.sh`** with repo-specific lint (e.g. `mise run docker-lint Dockerfile`, language linters).
-7. **Review `mise.toml`'s `min_version`**: the template provides a default, but the minimum mise version is each repository's own decision. Bump it if your tasks require a newer feature, or drop it if no constraint is needed. This is *not* auto-bumped by Renovate.
+### Inbound
+
+#### `decodeMessages(messages)`
+
+Turns Welt's Converse-shaped messages — built from the Slack thread, file bytes base64-encoded — into the messages Strands consumes. The block shapes already match; what changes is the encoding: the image/document/video bytes decode to the raw `Uint8Array` the SDK holds, and the wire's `three_gp` video token becomes the SDK's `3gp`. Malformed entries are skipped. The result feeds `Agent.stream()`:
+
+```ts
+const agent = new Agent({ tools });
+const stream = agent.stream(decodeMessages(payload.messages));
+```
+
+#### `decodeInterruptResponses(responses)`
+
+Turns Welt's resume payload — a mapping of interrupt id to the answer a human chose — into the `interruptResponse` content items Strands resumes from. The returned list feeds `Agent.stream()` on the interrupted `Agent` instance directly (see the [example agent](examples/agent) for how the host app keeps that instance around).
+
+### Outbound
+
+#### `renderableEvents(events)`
+
+Reduces the events of `Agent.stream()` — objects Welt does not render — to the events Welt renders:
+
+| Strands emits | On the wire | In the Slack thread |
+|---|---|---|
+| Text deltas | `data` | The streamed reply |
+| Tool-use starts and tool results | `current_tool_use` / `tool_result` | "Using tool" indicators (tool output stays off the wire) |
+| Image/document/video blocks a tool returns or the assistant message carries | `file` | An uploaded file ([size limits](https://github.com/iwamot/welt/blob/main/docs/wire.md#limits)) |
+| Interrupts pending in the final result | `interrupt` | Buttons and/or a text field |
+
+A run that stops for human input ends its stream with one `interrupt` event per pending interrupt — a faithful copy of the interrupt's id, name, and reason, the reason passed through unmodified since interpreting it is the renderer's job. Agents that do not interrupt see no change. To ask for human input from a tool, call `ToolContext.interrupt` with a reason built by `interruptReason` below; on resume, the same call returns the human's answer.
+
+#### `fileEvent(name, data)`
+
+Builds the same `file` event from a filename and raw bytes, for attaching arbitrary files of your own — yield it from the host app alongside the reduced stream. From inside a tool, no helper is needed: return an image/document/video content block and `renderableEvents` turns it into a `file` event (the [example agent](examples/agent)'s `attach_sample_file` shows this).
+
+#### `interruptReason(message, options, input)`
+
+Builds the structured reason Welt renders as a message with the specified widgets — choice buttons (`options`), a free-text field (`input`), or both. The specs are [the wire's own shapes](https://github.com/iwamot/welt/blob/main/docs/wire.md#interrupt); omitted fields keep Welt's defaults, and a typo becomes an immediate `TypeError` instead of a silent fallback to Welt's default rendering:
+
+```ts
+const answer = context.interrupt<string>({
+  name: "prod-deploy-approval",
+  reason: interruptReason(
+    "Deploy to prod?",
+    [
+      { value: "y", label: "Deploy", style: "primary" },
+      { value: "n", label: "Cancel" },
+    ],
+    { label: "Or tell me what to do instead" },
+  ),
+});
+```
+
+[Welt's Interrupts doc](https://github.com/iwamot/welt/blob/main/docs/interrupts.md) covers the Slack side: how each reason renders, who can answer, multiple questions, and expiry.
+
+## Supported Versions
+
+Welt releases first; @welt-io/strands follows, mirroring the minor version. While both are 0.x, a @welt-io/strands 0.Y release supports Welt v0.Y — other combinations may work, but come with no guarantee.
+
+## License
+
+MIT

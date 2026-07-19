@@ -1,0 +1,21 @@
+{
+  "name": "welt-io-ts-example-agent",
+  "private": true,
+  "description": "A small AgentCore agent that Welt can drive, built on Strands Agents and @welt-io/strands.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "start": "node src/main.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@strands-agents/sdk": "1.10.0",
+    "@welt-io/strands": "workspace:*",
+    "bedrock-agentcore": "0.4.1",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "typescript": "7.0.2"
+  }
+}
