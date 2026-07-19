@@ -1,5 +1,5 @@
 {
-  "name": "welt-io-ts-example-agent",
+  "name": "welt-io-strands-ts-example-agent",
   "private": true,
   "description": "A small AgentCore agent that Welt can drive, built on Strands Agents and @welt-io/strands.",
   "license": "MIT",

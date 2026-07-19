@@ -4,13 +4,13 @@
   "description": "The Strands Agents (TypeScript) adapter for Welt's wire contract.",
   "license": "MIT",
   "author": "Takashi Iwamoto",
-  "homepage": "https://github.com/iwamot/welt-io-ts",
+  "homepage": "https://github.com/iwamot/welt-io-strands-ts",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/iwamot/welt-io-ts.git"
+    "url": "git+https://github.com/iwamot/welt-io-strands-ts.git"
   },
   "bugs": {
-    "url": "https://github.com/iwamot/welt-io-ts/issues"
+    "url": "https://github.com/iwamot/welt-io-strands-ts/issues"
   },
   "keywords": [
     "welt",

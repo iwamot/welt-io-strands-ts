@@ -17,7 +17,7 @@ The agent runs on your machine as-is — [Welt's Quick Start](https://github.com
 Fetch the agent and run it with Node.js 24, which runs TypeScript directly:
 
 ```sh
-curl -O https://raw.githubusercontent.com/iwamot/welt-io-ts/main/examples/agent/src/main.ts
+curl -O https://raw.githubusercontent.com/iwamot/welt-io-strands-ts/main/examples/agent/src/main.ts
 echo '{"type":"module"}' > package.json
 npm install @welt-io/strands @strands-agents/sdk zod bedrock-agentcore
 MODEL_ID=global.anthropic.claude-sonnet-4-6 node main.ts
@@ -36,7 +36,7 @@ agentcore create --name WeltExample --no-agent
 cd WeltExample
 agentcore add agent --name WeltExample --type create --build CodeZip --language TypeScript --framework Strands --model-provider Bedrock --memory none
 
-curl -o app/WeltExample/main.ts https://raw.githubusercontent.com/iwamot/welt-io-ts/main/examples/agent/src/main.ts
+curl -o app/WeltExample/main.ts https://raw.githubusercontent.com/iwamot/welt-io-strands-ts/main/examples/agent/src/main.ts
 npm --prefix app/WeltExample install @welt-io/strands zod
 
 agentcore deploy
