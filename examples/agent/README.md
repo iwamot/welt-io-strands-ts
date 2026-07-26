@@ -47,8 +47,11 @@ Note the agent runtime ARN from the deploy output: Welt's `AGENT_ARN` points at 
 ## Tools
 
 - `current_time` — the minimal tool: plain text streaming, nothing else. Ask "what time is it?" to see tool use in the thread.
-- `attach_sample_file` — returns a document content block, which @welt-io/strands turns into a file upload in the thread. Ask it to attach the sample file.
+- `create_sample_file` — writes a small CSV and returns it as a document block, which the model reads and Welt uploads to the thread. Its name carries a random tail (`sample-3f2a1b9c.csv`) because a document's name has to be unique across the run. Ask it for a sample file.
 - `sample_dangerous_action` — a pretend dangerous action (no side effects, no extra AWS permissions) that pauses for human approval: Welt renders the pause as **Approve** / **Cancel** buttons plus a free-text field in the Slack thread, and whichever answer comes first — a press, or a typed instruction — resumes the run. Ask "deploy to prod", then press a button or type something like "run the tests first". See [Welt's Interrupts doc](https://github.com/iwamot/welt/blob/main/docs/interrupts.md) for the round trip.
+- `sample_draft_report` — drafts a small report, pauses to show it for approval, and on approval returns it as a markdown file (`report-8f3a2c1d.md`, tailed for the same reason). Drafting before the pause is the Strands interrupt pitfall: an interrupted tool re-executes from its start on resume, so the drafting is memoized on the tool use id and the published file stays identical to the approved draft. The draft is timestamped, so a silent redraft would show. Ask "draft a report about apples", then answer the buttons.
+
+The two that produce files are named in the entrypoint's `filesFrom` — that is what puts their files in the thread, and a tool left out of it would hand its files to the model alone.
 
 ## Optional: file input
 

@@ -9,6 +9,11 @@
  * `Agent.stream()` yields event objects Welt does not render. Each
  * function here adapts one piece, keeping the host app a thin loop
  * around `Agent.stream()`.
+ *
+ * `renderableEvents` reduces the stream to the events Welt renders, with
+ * the files of the tools the agent names base64-encoded. `fileEvent`
+ * builds the same `file` event from a name and raw bytes, for the files
+ * the host app attaches itself.
  */
 
 import { Buffer } from "node:buffer";
@@ -291,10 +296,9 @@ export interface FileEvent {
 /**
  * Build a `file` wire event, which Welt uploads to the Slack thread.
  *
- * `renderableEvents` emits these for the files a tool or the model
- * generates; this builds the same event from arbitrary bytes, for agents
- * that attach files of their own alongside the reduced stream — yield it
- * from the host app.
+ * `renderableEvents` emits these for the files the model returns and the
+ * files of the tools the agent names; this builds the same event from
+ * arbitrary bytes, for the files the host app attaches itself.
  *
  * @param name - The upload filename, extension included.
  * @param data - The raw file bytes.
@@ -472,31 +476,64 @@ export type RenderableEvent =
   | FileEvent
   | InterruptEvent;
 
+/** Options for `renderableEvents`. */
+export interface RenderableEventsOptions {
+  /**
+   * The names of the tools whose files become `file` events. Omitted, no
+   * tool's files reach the thread.
+   */
+  filesFrom?: Iterable<string>;
+}
+
 /**
  * Reduce Strands `Agent.stream()` events to the subset Welt renders.
  *
  * Iterates the events of `Agent.stream()` and yields the wire's
  * renderable subset: text chunks (`data`), tool-use indicators
  * (`current_tool_use` / `tool_result`, slimmed so tool output stays off
- * the wire), generated files (`file` — one per image, document, or video
- * block a tool result or the assistant message carries, named after the
- * block's name or kind plus the format as extension), and interrupts
- * (`interrupt` — when the run stops for human input, one per pending
- * interrupt from the stream's final result, its id, name, and reason,
- * the reason passed through unmodified since interpreting a reason is
- * the renderer's job). Everything else is dropped.
+ * the wire), files (`file` — one per image, document, or video block the
+ * assistant message carries or a tool named in `filesFrom` returned,
+ * named after the block's name or kind plus the format as extension),
+ * and interrupts (`interrupt` — when the run stops for human input, one
+ * per pending interrupt from the stream's final result, its id, name, and
+ * reason, the reason passed through unmodified since interpreting a
+ * reason is the renderer's job). Everything else is dropped.
+ *
+ * Which of the agent's files belong in the reply is the agent's call, so
+ * a tool's files become `file` events only when the tool is named in
+ * `filesFrom` — a tool that hands the model a file to read stays off the
+ * wire unless it is listed. Files the model itself returns are its reply,
+ * and always go.
+ *
+ * Naming the tool behind a result takes the stream's own announcement of
+ * the call, kept as it goes by: the agent's messages gain the request only
+ * once the tool has succeeded, too late to name the tool that a result
+ * belongs to. A resumed run re-executes its interrupted tool, so the
+ * announcement comes again with it.
  *
  * @param events - The events of `Agent.stream()`.
+ * @param options - `filesFrom`: the names of the tools whose files become
+ *   `file` events.
  * @yields The renderable wire events, in stream order.
  */
 export async function* renderableEvents(
   events: AsyncIterable<unknown>,
+  options?: RenderableEventsOptions,
 ): AsyncGenerator<RenderableEvent, void, undefined> {
+  const filesFrom = new Set(options?.filesFrom ?? []);
+  // Tool names by tool use id, learned as the stream announces each call:
+  // the agent's messages gain the request only once the tool has succeeded,
+  // which is too late to name the tool behind the result.
+  const toolNames = new Map<string, string>();
   for await (const event of events) {
     if (!isRecord(event)) {
       continue;
     }
     switch (event.type) {
+      case "beforeToolCallEvent": {
+        rememberToolName(toolNames, event.toolUse);
+        break;
+      }
       case "modelStreamUpdateEvent": {
         const rendered = modelStreamEvent(event.event);
         if (rendered !== null) {
@@ -505,7 +542,7 @@ export async function* renderableEvents(
         break;
       }
       case "toolResultEvent": {
-        yield* toolResultEvents(event.result);
+        yield* toolResultEvents(event.result, filesFrom, toolNames);
         break;
       }
       case "modelMessageEvent": {
@@ -558,24 +595,47 @@ function stringOrNull(value: unknown): string | null {
   return typeof value === "string" ? value : null;
 }
 
-function toolResultEvents(result: unknown): RenderableEvent[] {
+function rememberToolName(
+  toolNames: Map<string, string>,
+  toolUse: unknown,
+): void {
+  if (
+    isRecord(toolUse) &&
+    typeof toolUse.toolUseId === "string" &&
+    typeof toolUse.name === "string"
+  ) {
+    toolNames.set(toolUse.toolUseId, toolUse.name);
+  }
+}
+
+function toolResultEvents(
+  result: unknown,
+  filesFrom: ReadonlySet<string>,
+  toolNames: ReadonlyMap<string, string>,
+): RenderableEvent[] {
   if (!isRecord(result)) {
     return [];
   }
+  const toolUseId = stringOrNull(result.toolUseId);
   const events: RenderableEvent[] = [
     {
       tool_result: {
-        toolUseId: stringOrNull(result.toolUseId),
+        toolUseId,
         status: result.status === "error" ? "error" : "success",
       },
     },
   ];
-  if (Array.isArray(result.content)) {
-    for (const block of result.content) {
-      const event = blockFileEvent(block);
-      if (event !== null) {
-        events.push(event);
-      }
+  if (!Array.isArray(result.content)) {
+    return events;
+  }
+  const name = toolUseId === null ? undefined : toolNames.get(toolUseId);
+  if (name === undefined || !filesFrom.has(name)) {
+    return events;
+  }
+  for (const block of result.content) {
+    const fileEventOfBlock = blockFileEvent(block);
+    if (fileEventOfBlock !== null) {
+      events.push(fileEventOfBlock);
     }
   }
   return events;
