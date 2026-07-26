@@ -1,14 +1,15 @@
-import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { describe, test } from "node:test";
 import { decodeMessages } from "../src/index.ts";
 
 const HI = new Uint8Array([104, 105]); // "aGk=" decoded
 
 describe("decodeMessages", () => {
   test("returns no messages for a non-array payload", () => {
-    expect(decodeMessages(undefined)).toEqual([]);
-    expect(decodeMessages(null)).toEqual([]);
-    expect(decodeMessages("hi")).toEqual([]);
-    expect(decodeMessages({ role: "user" })).toEqual([]);
+    assert.deepEqual(decodeMessages(undefined), []);
+    assert.deepEqual(decodeMessages(null), []);
+    assert.deepEqual(decodeMessages("hi"), []);
+    assert.deepEqual(decodeMessages({ role: "user" }), []);
   });
 
   test("skips non-object entries and unknown roles", () => {
@@ -19,7 +20,7 @@ describe("decodeMessages", () => {
       { role: "system", content: [{ text: "x" }] },
       { role: "user", content: [{ text: "kept" }] },
     ];
-    expect(decodeMessages(messages)).toEqual([
+    assert.deepEqual(decodeMessages(messages), [
       { role: "user", content: [{ text: "kept" }] },
     ]);
   });
@@ -29,7 +30,7 @@ describe("decodeMessages", () => {
       { role: "user", content: [{ text: "hello" }] },
       { role: "assistant", content: [{ text: "hi there" }] },
     ];
-    expect(decodeMessages(messages)).toEqual([
+    assert.deepEqual(decodeMessages(messages), [
       { role: "user", content: [{ text: "hello" }] },
       { role: "assistant", content: [{ text: "hi there" }] },
     ]);
@@ -42,7 +43,7 @@ describe("decodeMessages", () => {
         content: [{ image: { format: "png", source: { bytes: "aGk=" } } }],
       },
     ];
-    expect(decodeMessages(messages)).toEqual([
+    assert.deepEqual(decodeMessages(messages), [
       {
         role: "user",
         content: [{ image: { format: "png", source: { bytes: HI } } }],
@@ -65,7 +66,7 @@ describe("decodeMessages", () => {
         ],
       },
     ];
-    expect(decodeMessages(messages)).toEqual([
+    assert.deepEqual(decodeMessages(messages), [
       {
         role: "user",
         content: [
@@ -87,7 +88,7 @@ describe("decodeMessages", () => {
         ],
       },
     ];
-    expect(decodeMessages(messages)).toEqual([]);
+    assert.deepEqual(decodeMessages(messages), []);
   });
 
   test("maps the wire's three_gp video token to the SDK's 3gp", () => {
@@ -100,7 +101,7 @@ describe("decodeMessages", () => {
         ],
       },
     ];
-    expect(decodeMessages(messages)).toEqual([
+    assert.deepEqual(decodeMessages(messages), [
       {
         role: "user",
         content: [
@@ -122,7 +123,7 @@ describe("decodeMessages", () => {
         ],
       },
     ];
-    expect(decodeMessages(messages)).toEqual([]);
+    assert.deepEqual(decodeMessages(messages), []);
   });
 
   test("skips malformed media blocks", () => {
@@ -146,7 +147,7 @@ describe("decodeMessages", () => {
         ],
       },
     ];
-    expect(decodeMessages(messages)).toEqual([
+    assert.deepEqual(decodeMessages(messages), [
       { role: "user", content: [{ text: "kept" }] },
     ]);
   });
@@ -162,7 +163,7 @@ describe("decodeMessages", () => {
         ],
       },
     ];
-    expect(decodeMessages(messages)).toEqual([
+    assert.deepEqual(decodeMessages(messages), [
       { role: "assistant", content: [{ text: "here you go" }] },
     ]);
   });
@@ -175,7 +176,7 @@ describe("decodeMessages", () => {
       { role: "assistant", content: "hi" },
       { role: "assistant", content: [{ toolUse: {} }] },
     ];
-    expect(decodeMessages(messages)).toEqual([]);
+    assert.deepEqual(decodeMessages(messages), []);
   });
 
   test("leaves the input untouched", () => {
@@ -184,6 +185,6 @@ describe("decodeMessages", () => {
       { role: "user", content: [{ image: { format: "png", source } }] },
     ];
     decodeMessages(messages);
-    expect(source.bytes).toBe("aGk=");
+    assert.equal(source.bytes, "aGk=");
   });
 });

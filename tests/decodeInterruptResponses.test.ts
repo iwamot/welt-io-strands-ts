@@ -1,12 +1,13 @@
-import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { describe, test } from "node:test";
 import { decodeInterruptResponses } from "../src/index.ts";
 
 describe("decodeInterruptResponses", () => {
   test("returns no responses for a non-object payload", () => {
-    expect(decodeInterruptResponses(undefined)).toEqual([]);
-    expect(decodeInterruptResponses(null)).toEqual([]);
-    expect(decodeInterruptResponses("y")).toEqual([]);
-    expect(decodeInterruptResponses([["a", "y"]])).toEqual([]);
+    assert.deepEqual(decodeInterruptResponses(undefined), []);
+    assert.deepEqual(decodeInterruptResponses(null), []);
+    assert.deepEqual(decodeInterruptResponses("y"), []);
+    assert.deepEqual(decodeInterruptResponses([["a", "y"]]), []);
   });
 
   test("decodes answers in payload order", () => {
@@ -14,7 +15,7 @@ describe("decodeInterruptResponses", () => {
       "interrupt-1": "y",
       "interrupt-2": "do it differently",
     };
-    expect(decodeInterruptResponses(responses)).toEqual([
+    assert.deepEqual(decodeInterruptResponses(responses), [
       { interruptResponse: { interruptId: "interrupt-1", response: "y" } },
       {
         interruptResponse: {
@@ -27,7 +28,7 @@ describe("decodeInterruptResponses", () => {
 
   test("skips non-string answers", () => {
     const responses = { a: 1, b: "ok", c: null };
-    expect(decodeInterruptResponses(responses)).toEqual([
+    assert.deepEqual(decodeInterruptResponses(responses), [
       { interruptResponse: { interruptId: "b", response: "ok" } },
     ]);
   });
