@@ -75,7 +75,7 @@ const sampleDangerousAction = tool({
   }),
   // A sample of the approval round trip: the interrupt below pauses the
   // run until someone answers in the Slack thread — with the buttons, or
-  // by typing an instruction into the text field. Nothing is actually
+  // by typing an answer into the text field. Nothing is actually
   // executed.
   callback: (input, context) => {
     if (context === undefined) {
@@ -89,7 +89,7 @@ const sampleDangerousAction = tool({
           { value: "y", label: "Approve", style: "primary" },
           { value: "n", label: "Cancel" },
         ],
-        { label: "Or tell me what to do instead" },
+        { label: "Or type your answer" },
       ),
     });
     if (answer === "y") {
@@ -98,7 +98,7 @@ const sampleDangerousAction = tool({
     if (answer === "n") {
       return "The action was cancelled by the user.";
     }
-    return `The action was not run. The user said instead: ${answer}`;
+    return `The action was not run. The user answered: ${answer}`;
   },
 });
 
@@ -151,7 +151,7 @@ const sampleDraftReport = tool({
           { value: "y", label: "Publish", style: "primary" },
           { value: "n", label: "Discard" },
         ],
-        { label: "Or tell me what to fix" },
+        { label: "Or type your answer" },
       ),
     });
     drafts.delete(toolUseId);
@@ -177,7 +177,7 @@ const sampleDraftReport = tool({
     if (answer === "n") {
       return "The user discarded the draft; nothing was published.";
     }
-    return `The draft was not published. The user said instead: ${answer}`;
+    return `The draft was not published. The user answered: ${answer}`;
   },
 });
 
