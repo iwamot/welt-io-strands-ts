@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
+import type { RenderableEventsOptions } from "../src/index.ts";
 import { renderableEvents } from "../src/index.ts";
 
 const HI = new Uint8Array([104, 105]); // "aGk=" encoded
@@ -12,8 +13,19 @@ async function* stream(
   }
 }
 
-function rendered(events: readonly unknown[]) {
-  return Array.fromAsync(renderableEvents(stream(events)));
+function rendered(
+  events: readonly unknown[],
+  options?: RenderableEventsOptions,
+) {
+  return Array.fromAsync(renderableEvents(stream(events), options));
+}
+
+/** The stream's announcement of a tool call, which names it. */
+function toolCallStart(toolUseId: string, name: string) {
+  return {
+    type: "beforeToolCallEvent",
+    toolUse: { toolUseId, name, input: {} },
+  };
 }
 
 function modelStreamUpdate(event: unknown) {
@@ -116,8 +128,87 @@ describe("renderableEvents", () => {
     ]);
   });
 
-  test("emits a file event per file block a tool returned", async () => {
+  test("keeps the files of a tool left out of filesFrom off the wire", async () => {
     const events = [
+      toolCallStart("t1", "file_read"),
+      {
+        type: "toolResultEvent",
+        result: {
+          toolUseId: "t1",
+          status: "success",
+          content: [
+            {
+              type: "documentBlock",
+              name: "manual",
+              format: "pdf",
+              source: { type: "documentSourceBytes", bytes: HI },
+            },
+          ],
+        },
+      },
+    ];
+    const only = {
+      tool_result: { toolUseId: "t1", status: "success" },
+    } as const;
+    assert.deepEqual(await rendered(events, { filesFrom: ["maker"] }), [only]);
+    assert.deepEqual(await rendered(events, { filesFrom: new Set<string>() }), [
+      only,
+    ]);
+    assert.deepEqual(await rendered(events), [only]);
+  });
+
+  test("keeps files off the wire when the tool behind them is unknown", async () => {
+    const result = {
+      toolUseId: "t1",
+      status: "success",
+      content: [
+        {
+          type: "documentBlock",
+          name: "report",
+          format: "md",
+          source: { type: "documentSourceBytes", bytes: HI },
+        },
+      ],
+    };
+    // Announcements that name no tool for this result: none at all, a
+    // malformed one, and one for a different call.
+    const unnaming: unknown[][] = [
+      [],
+      [{ type: "beforeToolCallEvent" }],
+      [{ type: "beforeToolCallEvent", toolUse: "maker" }],
+      [{ type: "beforeToolCallEvent", toolUse: { toolUseId: "t1" } }],
+      [{ type: "beforeToolCallEvent", toolUse: { name: "maker" } }],
+      [
+        {
+          type: "beforeToolCallEvent",
+          toolUse: { toolUseId: 1, name: "maker" },
+        },
+      ],
+      [{ type: "beforeToolCallEvent", toolUse: { toolUseId: "t1", name: 5 } }],
+      [toolCallStart("t2", "maker")],
+    ];
+    for (const announcement of unnaming) {
+      const events = [...announcement, { type: "toolResultEvent", result }];
+      assert.deepEqual(await rendered(events, { filesFrom: ["maker"] }), [
+        { tool_result: { toolUseId: "t1", status: "success" } },
+      ]);
+    }
+
+    const idless = [
+      toolCallStart("t1", "maker"),
+      {
+        type: "toolResultEvent",
+        result: { ...result, toolUseId: undefined },
+      },
+    ];
+    assert.deepEqual(await rendered(idless, { filesFrom: ["maker"] }), [
+      { tool_result: { toolUseId: null, status: "success" } },
+    ]);
+  });
+
+  test("emits a file event per file block a tool named in filesFrom returned", async () => {
+    const events = [
+      toolCallStart("t1", "create_sample_file"),
       {
         type: "toolResultEvent",
         result: {
@@ -144,16 +235,20 @@ describe("renderableEvents", () => {
         },
       },
     ];
-    assert.deepEqual(await rendered(events), [
-      { tool_result: { toolUseId: "t1", status: "success" } },
-      { file: { name: "image.png", bytes: "aGk=" } },
-      { file: { name: "Report.pdf", bytes: "aGk=" } },
-      { file: { name: "video.3gp", bytes: "aGk=" } },
-    ]);
+    assert.deepEqual(
+      await rendered(events, { filesFrom: ["create_sample_file"] }),
+      [
+        { tool_result: { toolUseId: "t1", status: "success" } },
+        { file: { name: "image.png", bytes: "aGk=" } },
+        { file: { name: "Report.pdf", bytes: "aGk=" } },
+        { file: { name: "video.3gp", bytes: "aGk=" } },
+      ],
+    );
   });
 
   test("skips tool-result blocks without raw bytes", async () => {
     const events = [
+      toolCallStart("t1", "maker"),
       {
         type: "toolResultEvent",
         result: {
@@ -179,13 +274,14 @@ describe("renderableEvents", () => {
         },
       },
     ];
-    assert.deepEqual(await rendered(events), [
+    assert.deepEqual(await rendered(events, { filesFrom: ["maker"] }), [
       { tool_result: { toolUseId: "t1", status: "success" } },
     ]);
   });
 
   test("names a file after its kind when the block has no name", async () => {
     const events = [
+      toolCallStart("t1", "maker"),
       {
         type: "toolResultEvent",
         result: {
@@ -202,7 +298,7 @@ describe("renderableEvents", () => {
         },
       },
     ];
-    assert.deepEqual(await rendered(events), [
+    assert.deepEqual(await rendered(events, { filesFrom: ["maker"] }), [
       { tool_result: { toolUseId: "t1", status: "success" } },
       { file: { name: "document.csv", bytes: "aGk=" } },
     ]);
@@ -210,6 +306,7 @@ describe("renderableEvents", () => {
 
   test("omits the extension when the block has no format", async () => {
     const events = [
+      toolCallStart("t1", "maker"),
       {
         type: "toolResultEvent",
         result: {
@@ -224,7 +321,7 @@ describe("renderableEvents", () => {
         },
       },
     ];
-    assert.deepEqual(await rendered(events), [
+    assert.deepEqual(await rendered(events, { filesFrom: ["maker"] }), [
       { tool_result: { toolUseId: "t1", status: "success" } },
       { file: { name: "image", bytes: "aGk=" } },
     ]);
