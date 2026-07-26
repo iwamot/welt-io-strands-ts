@@ -80,7 +80,7 @@ const answer = context.interrupt<string>({
       { value: "y", label: "Deploy", style: "primary" },
       { value: "n", label: "Cancel" },
     ],
-    { label: "Or tell me what to do instead" },
+    { label: "Or type your answer" },
   ),
 });
 ```
