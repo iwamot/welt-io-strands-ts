@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { describe, test } from "node:test";
 import { renderableEvents } from "../src/index.ts";
 
 const HI = new Uint8Array([104, 105]); // "aGk=" encoded
@@ -51,15 +52,15 @@ describe("renderableEvents", () => {
       modelStreamUpdate({ type: "modelContentBlockStartEvent" }),
       modelStreamUpdate({ type: "modelContentBlockStartEvent", start: "x" }),
     ];
-    expect(await rendered(events)).toEqual([]);
+    assert.deepEqual(await rendered(events), []);
   });
 
   test("yields text deltas", async () => {
-    expect(await rendered([textDelta("Hello")])).toEqual([{ data: "Hello" }]);
+    assert.deepEqual(await rendered([textDelta("Hello")]), [{ data: "Hello" }]);
   });
 
   test("drops empty or non-string text", async () => {
-    expect(await rendered([textDelta(""), textDelta(5)])).toEqual([]);
+    assert.deepEqual(await rendered([textDelta(""), textDelta(5)]), []);
   });
 
   test("turns a tool-use start into the tool-use indicator", async () => {
@@ -69,7 +70,7 @@ describe("renderableEvents", () => {
         start: { type: "toolUseStart", name: "my_tool", toolUseId: "t1" },
       }),
     ];
-    expect(await rendered(events)).toEqual([
+    assert.deepEqual(await rendered(events), [
       { current_tool_use: { toolUseId: "t1", name: "my_tool" } },
     ]);
   });
@@ -81,7 +82,7 @@ describe("renderableEvents", () => {
         start: { type: "toolUseStart", toolUseId: 5 },
       }),
     ];
-    expect(await rendered(events)).toEqual([
+    assert.deepEqual(await rendered(events), [
       { current_tool_use: { toolUseId: null, name: null } },
     ]);
   });
@@ -98,7 +99,7 @@ describe("renderableEvents", () => {
         },
       },
     ];
-    expect(await rendered(events)).toEqual([
+    assert.deepEqual(await rendered(events), [
       { tool_result: { toolUseId: "t1", status: "success" } },
     ]);
   });
@@ -109,7 +110,7 @@ describe("renderableEvents", () => {
       { type: "toolResultEvent", result: {} },
       { type: "toolResultEvent", result: "x" },
     ];
-    expect(await rendered(events)).toEqual([
+    assert.deepEqual(await rendered(events), [
       { tool_result: { toolUseId: null, status: "error" } },
       { tool_result: { toolUseId: null, status: "success" } },
     ]);
@@ -143,7 +144,7 @@ describe("renderableEvents", () => {
         },
       },
     ];
-    expect(await rendered(events)).toEqual([
+    assert.deepEqual(await rendered(events), [
       { tool_result: { toolUseId: "t1", status: "success" } },
       { file: { name: "image.png", bytes: "aGk=" } },
       { file: { name: "Report.pdf", bytes: "aGk=" } },
@@ -178,7 +179,7 @@ describe("renderableEvents", () => {
         },
       },
     ];
-    expect(await rendered(events)).toEqual([
+    assert.deepEqual(await rendered(events), [
       { tool_result: { toolUseId: "t1", status: "success" } },
     ]);
   });
@@ -201,7 +202,7 @@ describe("renderableEvents", () => {
         },
       },
     ];
-    expect(await rendered(events)).toEqual([
+    assert.deepEqual(await rendered(events), [
       { tool_result: { toolUseId: "t1", status: "success" } },
       { file: { name: "document.csv", bytes: "aGk=" } },
     ]);
@@ -223,7 +224,7 @@ describe("renderableEvents", () => {
         },
       },
     ];
-    expect(await rendered(events)).toEqual([
+    assert.deepEqual(await rendered(events), [
       { tool_result: { toolUseId: "t1", status: "success" } },
       { file: { name: "image", bytes: "aGk=" } },
     ]);
@@ -247,7 +248,7 @@ describe("renderableEvents", () => {
         stopReason: "endTurn",
       },
     ];
-    expect(await rendered(events)).toEqual([
+    assert.deepEqual(await rendered(events), [
       { file: { name: "image.png", bytes: "aGk=" } },
     ]);
   });
@@ -258,7 +259,7 @@ describe("renderableEvents", () => {
       { type: "modelMessageEvent", message: "x" },
       { type: "modelMessageEvent", message: { content: "x" } },
     ];
-    expect(await rendered(events)).toEqual([]);
+    assert.deepEqual(await rendered(events), []);
   });
 
   test("ends an interrupted stream with the pending interrupts", async () => {
@@ -276,7 +277,7 @@ describe("renderableEvents", () => {
         },
       },
     ];
-    expect(await rendered(events)).toEqual([
+    assert.deepEqual(await rendered(events), [
       { data: "Working on it." },
       { interrupt: { id: "i1", name: "approval", reason } },
       { interrupt: { id: "i2", name: "question", reason: "free-form" } },
@@ -289,7 +290,7 @@ describe("renderableEvents", () => {
       { type: "agentResultEvent", result: "x" },
       { type: "agentResultEvent" },
     ];
-    expect(await rendered(events)).toEqual([]);
+    assert.deepEqual(await rendered(events), []);
   });
 
   test("skips interrupts without a usable id and defaults the name", async () => {
@@ -302,7 +303,7 @@ describe("renderableEvents", () => {
         },
       },
     ];
-    expect(await rendered(events)).toEqual([
+    assert.deepEqual(await rendered(events), [
       { interrupt: { id: "i1", name: "", reason: undefined } },
     ]);
   });
