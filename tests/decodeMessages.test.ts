@@ -4,27 +4,10 @@ import { decodeMessages } from "../src/index.ts";
 
 const HI = new Uint8Array([104, 105]); // "aGk=" decoded
 
+const rejects = (messages: unknown) =>
+  assert.throws(() => decodeMessages(messages), TypeError);
+
 describe("decodeMessages", () => {
-  test("returns no messages for a non-array payload", () => {
-    assert.deepEqual(decodeMessages(undefined), []);
-    assert.deepEqual(decodeMessages(null), []);
-    assert.deepEqual(decodeMessages("hi"), []);
-    assert.deepEqual(decodeMessages({ role: "user" }), []);
-  });
-
-  test("skips non-object entries and unknown roles", () => {
-    const messages = [
-      null,
-      "hi",
-      ["user"],
-      { role: "system", content: [{ text: "x" }] },
-      { role: "user", content: [{ text: "kept" }] },
-    ];
-    assert.deepEqual(decodeMessages(messages), [
-      { role: "user", content: [{ text: "kept" }] },
-    ]);
-  });
-
   test("keeps text blocks of both roles", () => {
     const messages = [
       { role: "user", content: [{ text: "hello" }] },
@@ -78,19 +61,6 @@ describe("decodeMessages", () => {
     ]);
   });
 
-  test("skips a document without a name", () => {
-    const messages = [
-      {
-        role: "user",
-        content: [
-          { document: { format: "pdf", source: { bytes: "aGk=" } } },
-          { document: { format: "pdf", name: "", source: { bytes: "aGk=" } } },
-        ],
-      },
-    ];
-    assert.deepEqual(decodeMessages(messages), []);
-  });
-
   test("maps the wire's three_gp video token to the SDK's 3gp", () => {
     const messages = [
       {
@@ -112,71 +82,160 @@ describe("decodeMessages", () => {
     ]);
   });
 
-  test("skips blocks with a format the SDK does not know", () => {
-    const messages = [
-      {
-        role: "user",
-        content: [
-          { image: { format: "bmp", source: { bytes: "aGk=" } } },
-          { document: { name: "n", format: "rtf", source: { bytes: "aGk=" } } },
-          { video: { format: "avi", source: { bytes: "aGk=" } } },
-        ],
-      },
-    ];
-    assert.deepEqual(decodeMessages(messages), []);
+  test("accepts base64 an encoder wrote its own way", () => {
+    // Unpadded, and split across lines the way MIME encoders wrap: both
+    // name the same bytes, so neither is the sender's mistake.
+    for (const bytes of ["aGk", "aG\nk="]) {
+      const messages = [
+        {
+          role: "user",
+          content: [{ image: { format: "png", source: { bytes } } }],
+        },
+      ];
+      assert.deepEqual(decodeMessages(messages), [
+        {
+          role: "user",
+          content: [{ image: { format: "png", source: { bytes: HI } } }],
+        },
+      ]);
+    }
   });
 
-  test("skips malformed media blocks", () => {
-    const messages = [
-      {
-        role: "user",
-        content: [
-          "x",
-          { image: "x" },
-          { image: { format: "png" } },
-          { image: { format: "png", source: "x" } },
-          { image: { format: "png", source: { bytes: 5 } } },
-          { image: { format: "png", source: { bytes: "" } } },
-          { image: { source: { bytes: "aGk=" } } },
-          { document: 5 },
-          { document: { name: "n", format: "pdf" } },
-          { video: 5 },
-          { video: { format: "mp4" } },
-          {},
-          { text: "kept" },
-        ],
-      },
-    ];
-    assert.deepEqual(decodeMessages(messages), [
-      { role: "user", content: [{ text: "kept" }] },
+  test("keeps an empty conversation empty", () => {
+    assert.deepEqual(decodeMessages([]), []);
+  });
+
+  test("passes a message with no content blocks on to the SDK", () => {
+    assert.deepEqual(decodeMessages([{ role: "user", content: [] }]), [
+      { role: "user", content: [] },
     ]);
   });
 
-  test("keeps only text in assistant messages", () => {
-    const messages = [
+  test("rejects a payload that is not an array", () => {
+    rejects(undefined);
+    rejects(null);
+    rejects("hi");
+    rejects({ role: "user" });
+  });
+
+  test("rejects a message that is not an object", () => {
+    rejects([null]);
+    rejects(["hi"]);
+    rejects([["user"]]);
+  });
+
+  test("rejects a role the contract does not carry", () => {
+    rejects([{ role: "system", content: [{ text: "x" }] }]);
+    rejects([{ content: [{ text: "x" }] }]);
+  });
+
+  test("rejects content that is not an array", () => {
+    rejects([{ role: "user", content: "hi" }]);
+    rejects([{ role: "assistant", content: "hi" }]);
+  });
+
+  test("rejects a content block that is not an object", () => {
+    rejects([{ role: "user", content: ["x"] }]);
+  });
+
+  test("rejects a block carrying no key the contract defines", () => {
+    rejects([{ role: "user", content: [{}] }]);
+    rejects([{ role: "user", content: [{ toolUse: { name: "t" } }] }]);
+  });
+
+  test("rejects non-text in an assistant message", () => {
+    rejects([
       {
         role: "assistant",
-        content: [
-          { text: "here you go" },
-          { image: { format: "png", source: { bytes: "aGk=" } } },
-          { toolUse: { name: "t", toolUseId: "1", input: {} } },
-        ],
+        content: [{ image: { format: "png", source: { bytes: "aGk=" } } }],
       },
-    ];
-    assert.deepEqual(decodeMessages(messages), [
-      { role: "assistant", content: [{ text: "here you go" }] },
     ]);
   });
 
-  test("drops messages left with no blocks", () => {
-    const messages = [
-      { role: "user", content: [] },
-      { role: "user", content: "hi" },
-      { role: "user", content: [{ image: "x" }] },
-      { role: "assistant", content: "hi" },
-      { role: "assistant", content: [{ toolUse: {} }] },
-    ];
-    assert.deepEqual(decodeMessages(messages), []);
+  test("rejects a text block whose text is not a string", () => {
+    rejects([{ role: "user", content: [{ text: 5 }] }]);
+  });
+
+  test("rejects a media block that is not an object", () => {
+    rejects([{ role: "user", content: [{ image: "x" }] }]);
+    rejects([{ role: "user", content: [{ document: 5 }] }]);
+    rejects([{ role: "user", content: [{ video: 5 }] }]);
+  });
+
+  test("rejects a media block without a usable format", () => {
+    rejects([{ role: "user", content: [{ image: { source: {} } }] }]);
+    rejects([
+      {
+        role: "user",
+        content: [{ image: { format: "bmp", source: { bytes: "aGk=" } } }],
+      },
+    ]);
+    rejects([
+      {
+        role: "user",
+        content: [
+          { document: { name: "n", format: "rtf", source: { bytes: "aGk=" } } },
+        ],
+      },
+    ]);
+    rejects([
+      {
+        role: "user",
+        content: [{ video: { format: "avi", source: { bytes: "aGk=" } } }],
+      },
+    ]);
+  });
+
+  test("rejects a media block without usable source bytes", () => {
+    rejects([{ role: "user", content: [{ image: { format: "png" } }] }]);
+    rejects([
+      { role: "user", content: [{ image: { format: "png", source: "x" } }] },
+    ]);
+    rejects([
+      {
+        role: "user",
+        content: [{ image: { format: "png", source: { bytes: 5 } } }],
+      },
+    ]);
+    rejects([
+      {
+        role: "user",
+        content: [{ image: { format: "png", source: { bytes: "" } } }],
+      },
+    ]);
+  });
+
+  test("rejects bytes that were never valid base64", () => {
+    // Buffer.from would drop the "*" and return plausible bytes instead.
+    rejects([
+      {
+        role: "user",
+        content: [{ image: { format: "png", source: { bytes: "a*Gk=" } } }],
+      },
+    ]);
+    rejects([
+      {
+        role: "user",
+        content: [{ image: { format: "png", source: { bytes: "a" } } }],
+      },
+    ]);
+  });
+
+  test("rejects a document without a name", () => {
+    rejects([
+      {
+        role: "user",
+        content: [{ document: { format: "pdf", source: { bytes: "aGk=" } } }],
+      },
+    ]);
+    rejects([
+      {
+        role: "user",
+        content: [
+          { document: { format: "pdf", name: "", source: { bytes: "aGk=" } } },
+        ],
+      },
+    ]);
   });
 
   test("leaves the input untouched", () => {
