@@ -23,7 +23,7 @@ The wire between Welt and the agent is JSON, specified by [Welt's wire contract]
 
 #### `decodeMessages(messages)`
 
-Turns Welt's Converse-shaped messages — built from the Slack thread, file bytes base64-encoded — into the messages Strands consumes. The block shapes already match; what changes is the encoding: the image/document/video bytes decode to the raw `Uint8Array` the SDK holds, and the wire's `three_gp` video token becomes the SDK's `3gp`. Malformed entries are skipped. The result feeds `Agent.stream()`:
+Turns Welt's Converse-shaped messages — built from the Slack thread, file bytes base64-encoded — into the messages Strands consumes. The block shapes already match; what changes is the encoding: the image/document/video bytes decode to the raw `Uint8Array` the SDK holds, and the wire's `three_gp` video token becomes the SDK's `3gp`. The result feeds `Agent.stream()`:
 
 ```ts
 const agent = new Agent({ tools });
@@ -33,6 +33,10 @@ const stream = agent.stream(decodeMessages(payload.messages));
 #### `decodeInterruptResponses(responses)`
 
 Turns Welt's resume payload — a mapping of interrupt id to the answer a human chose — into the `interruptResponse` content items Strands resumes from. The returned list feeds `Agent.stream()` on the interrupted `Agent` instance directly (see the [example agent](examples/agent) for how the host app keeps that instance around).
+
+#### Payloads that violate the contract
+
+Both functions throw a `TypeError` on a payload the [wire contract](https://github.com/iwamot/welt/blob/main/docs/wire.md#malformed-payloads) does not describe — an unknown role, a block missing its bytes, base64 that was never valid. Welt does not send those, so a throw means the caller is not Welt or Welt has a bug; either way, decoding what is left would hand the agent a conversation with a turn missing, and answering from a question that was never asked is worse than not answering.
 
 ### Outbound
 

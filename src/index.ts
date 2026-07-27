@@ -125,135 +125,210 @@ const VIDEO_FORMATS: ReadonlySet<string> = new Set([
  * cannot carry raw bytes — where the SDK holds a `Uint8Array`, and the
  * wire's `three_gp` video token is `3gp` in the SDK. This walks the
  * payload's `messages` value and rebuilds each message with raw bytes
- * and SDK format tokens. Malformed entries are skipped, since they come
- * from the wire rather than the developer; messages left with no blocks
- * are dropped. The result feeds `new Agent({ messages })`.
+ * and SDK format tokens. The result feeds `new Agent({ messages })`.
+ *
+ * A payload that departs from the wire contract throws: it is a bug on
+ * the sending side, and decoding what is left of it would hand the agent
+ * a conversation with a turn missing.
  *
  * @param messages - The `messages` value of Welt's payload.
  * @returns Messages for the `Agent` constructor.
+ * @throws {TypeError} If the payload violates the wire contract.
  */
 export function decodeMessages(messages: unknown): DecodedMessage[] {
   if (!Array.isArray(messages)) {
-    return [];
+    throw new TypeError(`messages must be an array, got ${shown(messages)}`);
   }
-  const decoded: DecodedMessage[] = [];
-  for (const message of messages) {
-    if (!isRecord(message)) {
-      continue;
-    }
-    if (message.role === "user") {
-      const content = userContent(message.content);
-      if (content.length > 0) {
-        decoded.push({ role: "user", content });
-      }
-    } else if (message.role === "assistant") {
-      const content = assistantContent(message.content);
-      if (content.length > 0) {
-        decoded.push({ role: "assistant", content });
-      }
-    }
-  }
-  return decoded;
+  return messages.map(decodedMessage);
 }
 
-function userContent(content: unknown): DecodedUserBlock[] {
+function decodedMessage(message: unknown): DecodedMessage {
+  if (!isRecord(message)) {
+    throw new TypeError(`a message must be an object, got ${shown(message)}`);
+  }
+  const { role } = message;
+  if (role === "user") {
+    return { role, content: contentBlocks(message.content).map(userBlock) };
+  }
+  if (role === "assistant") {
+    return {
+      role,
+      content: contentBlocks(message.content).map(assistantBlock),
+    };
+  }
+  throw new TypeError(
+    `a message's role must be "user" or "assistant", got ${shown(role)}`,
+  );
+}
+
+function contentBlocks(content: unknown): unknown[] {
   if (!Array.isArray(content)) {
-    return [];
+    throw new TypeError(
+      `a message's content must be an array, got ${shown(content)}`,
+    );
   }
-  const blocks: DecodedUserBlock[] = [];
-  for (const block of content) {
-    if (!isRecord(block)) {
-      continue;
-    }
-    if (typeof block.text === "string") {
-      blocks.push({ text: block.text });
-      continue;
-    }
-    const decoded =
-      imageBlock(block.image) ??
-      documentBlock(block.document) ??
-      videoBlock(block.video);
-    if (decoded !== null) {
-      blocks.push(decoded);
-    }
-  }
-  return blocks;
+  return content;
 }
 
-function assistantContent(content: unknown): DecodedTextBlock[] {
-  if (!Array.isArray(content)) {
-    return [];
+function userBlock(block: unknown): DecodedUserBlock {
+  const record = blockRecord(block);
+  if ("text" in record) {
+    return textBlock(record.text);
   }
-  const blocks: DecodedTextBlock[] = [];
-  for (const block of content) {
-    if (isRecord(block) && typeof block.text === "string") {
-      blocks.push({ text: block.text });
-    }
+  if ("image" in record) {
+    return imageBlock(record.image);
   }
-  return blocks;
+  if ("document" in record) {
+    return documentBlock(record.document);
+  }
+  if ("video" in record) {
+    return videoBlock(record.video);
+  }
+  throw new TypeError(
+    `a content block must carry text, image, document, or video, got the ` +
+      `keys ${shown(Object.keys(record).join(", "))}`,
+  );
 }
 
-function imageBlock(media: unknown): DecodedImageBlock | null {
-  if (!isRecord(media)) {
-    return null;
+// Welt's assistant messages are its own earlier replies, which carry text
+// and nothing else.
+function assistantBlock(block: unknown): DecodedTextBlock {
+  const record = blockRecord(block);
+  if ("text" in record) {
+    return textBlock(record.text);
   }
-  const bytes = decodedSourceBytes(media);
-  const format = media.format;
-  if (bytes === null || typeof format !== "string") {
-    return null;
-  }
-  if (!IMAGE_FORMATS.has(format)) {
-    return null;
-  }
-  return { image: { format: format as ImageFormat, source: { bytes } } };
+  throw new TypeError(
+    `an assistant message carries text blocks only, got the keys ` +
+      `${shown(Object.keys(record).join(", "))}`,
+  );
 }
 
-function documentBlock(media: unknown): DecodedDocumentBlock | null {
-  if (!isRecord(media)) {
-    return null;
+function blockRecord(block: unknown): Record<string, unknown> {
+  if (!isRecord(block)) {
+    throw new TypeError(
+      `a content block must be an object, got ${shown(block)}`,
+    );
   }
-  const bytes = decodedSourceBytes(media);
-  const { name, format } = media;
-  if (bytes === null || typeof format !== "string") {
-    return null;
+  return block;
+}
+
+function textBlock(text: unknown): DecodedTextBlock {
+  if (typeof text !== "string") {
+    throw new TypeError(
+      `a text block's text must be a string, got ${shown(text)}`,
+    );
   }
-  if (typeof name !== "string" || name.length === 0) {
-    return null;
-  }
-  if (!DOCUMENT_FORMATS.has(format)) {
-    return null;
-  }
+  return { text };
+}
+
+function imageBlock(media: unknown): DecodedImageBlock {
+  const record = mediaRecord(media, "image");
+  const format = knownFormat(record, "image", IMAGE_FORMATS);
   return {
-    document: { name, format: format as DocumentFormat, source: { bytes } },
+    image: {
+      format: format as ImageFormat,
+      source: { bytes: decodedSourceBytes(record, "image") },
+    },
   };
 }
 
-function videoBlock(media: unknown): DecodedVideoBlock | null {
-  if (!isRecord(media)) {
-    return null;
+function documentBlock(media: unknown): DecodedDocumentBlock {
+  const record = mediaRecord(media, "document");
+  const format = knownFormat(record, "document", DOCUMENT_FORMATS);
+  const { name } = record;
+  if (typeof name !== "string" || name.length === 0) {
+    throw new TypeError(
+      `a document block needs a non-empty name, got ${shown(name)}`,
+    );
   }
-  const bytes = decodedSourceBytes(media);
-  if (bytes === null || typeof media.format !== "string") {
-    return null;
-  }
-  // The wire carries the Converse token for 3GP; the SDK's is shorter.
-  const format = media.format === "three_gp" ? "3gp" : media.format;
-  if (!VIDEO_FORMATS.has(format)) {
-    return null;
-  }
-  return { video: { format: format as VideoFormat, source: { bytes } } };
+  return {
+    document: {
+      name,
+      format: format as DocumentFormat,
+      source: { bytes: decodedSourceBytes(record, "document") },
+    },
+  };
 }
 
-function decodedSourceBytes(media: Record<string, unknown>): Uint8Array | null {
+function videoBlock(media: unknown): DecodedVideoBlock {
+  const record = mediaRecord(media, "video");
+  const format = knownFormat(record, "video", VIDEO_FORMATS);
+  return {
+    video: {
+      format: format as VideoFormat,
+      source: { bytes: decodedSourceBytes(record, "video") },
+    },
+  };
+}
+
+function mediaRecord(media: unknown, kind: string): Record<string, unknown> {
+  if (!isRecord(media)) {
+    throw new TypeError(
+      `a ${kind} block must be an object, got ${shown(media)}`,
+    );
+  }
+  return media;
+}
+
+function knownFormat(
+  media: Record<string, unknown>,
+  kind: string,
+  known: ReadonlySet<string>,
+): string {
+  const { format } = media;
+  if (typeof format !== "string") {
+    throw new TypeError(`a ${kind} block needs a format, got ${shown(format)}`);
+  }
+  // The wire carries the Converse token for 3GP; the SDK's is shorter.
+  const resolved = format === "three_gp" ? "3gp" : format;
+  if (!known.has(resolved)) {
+    throw new TypeError(`a ${kind} block's format ${shown(format)} is unknown`);
+  }
+  return resolved;
+}
+
+function decodedSourceBytes(
+  media: Record<string, unknown>,
+  kind: string,
+): Uint8Array {
   const source = media.source;
   if (!isRecord(source)) {
-    return null;
+    throw new TypeError(
+      `a ${kind} block needs a source object, got ${shown(source)}`,
+    );
   }
   const bytes = source.bytes;
   if (typeof bytes !== "string" || bytes.length === 0) {
-    return null;
+    throw new TypeError(
+      `a ${kind} block needs base64 source.bytes, got ${shown(bytes)}`,
+    );
   }
-  return new Uint8Array(Buffer.from(bytes, "base64"));
+  const decoded = Buffer.from(bytes, "base64");
+  // Buffer.from discards what is not base64 instead of failing, so bytes
+  // that were never valid would otherwise reach the model as plausible
+  // garbage. Re-encoding catches that; padding is left out of the
+  // comparison, being a formatting detail rather than lost content.
+  if (unpadded(decoded.toString("base64")) !== unpadded(bytes)) {
+    throw new TypeError(`a ${kind} block's source.bytes is not valid base64`);
+  }
+  return new Uint8Array(decoded);
+}
+
+function unpadded(base64: string): string {
+  return base64.replace(/=+$/, "");
+}
+
+function shown(value: unknown): string {
+  if (typeof value === "string") {
+    return JSON.stringify(value);
+  }
+  if (value === null) {
+    return "null";
+  }
+  if (Array.isArray(value)) {
+    return "an array";
+  }
+  return typeof value;
 }
 
 /** One decoded interrupt answer as a Strands resume content block. */
@@ -269,23 +344,31 @@ export interface DecodedInterruptResponse {
  * list of `interruptResponse` content items; the returned list feeds
  * `Agent.stream()` directly.
  *
+ * A payload that departs from the wire contract throws: resuming a run
+ * with an answer short is worse than not resuming it at all.
+ *
  * @param responses - The `interrupt_responses` value of Welt's payload.
  * @returns One `interruptResponse` item per answered interrupt, in
  *   payload order.
+ * @throws {TypeError} If the payload violates the wire contract.
  */
 export function decodeInterruptResponses(
   responses: unknown,
 ): DecodedInterruptResponse[] {
   if (!isRecord(responses)) {
-    return [];
+    throw new TypeError(
+      `interrupt_responses must be an object, got ${shown(responses)}`,
+    );
   }
-  const decoded: DecodedInterruptResponse[] = [];
-  for (const [interruptId, response] of Object.entries(responses)) {
-    if (typeof response === "string") {
-      decoded.push({ interruptResponse: { interruptId, response } });
+  return Object.entries(responses).map(([interruptId, response]) => {
+    if (typeof response !== "string") {
+      throw new TypeError(
+        `the answer to ${shown(interruptId)} must be a string, got ` +
+          `${shown(response)}`,
+      );
     }
-  }
-  return decoded;
+    return { interruptResponse: { interruptId, response } };
+  });
 }
 
 /** A `file` wire event: a filename plus base64 bytes Welt uploads to Slack. */
