@@ -82,19 +82,23 @@ describe("decodeMessages", () => {
     ]);
   });
 
-  test("accepts base64 left unpadded", () => {
-    const messages = [
-      {
-        role: "user",
-        content: [{ image: { format: "png", source: { bytes: "aGk" } } }],
-      },
-    ];
-    assert.deepEqual(decodeMessages(messages), [
-      {
-        role: "user",
-        content: [{ image: { format: "png", source: { bytes: HI } } }],
-      },
-    ]);
+  test("accepts base64 an encoder wrote its own way", () => {
+    // Unpadded, and split across lines the way MIME encoders wrap: both
+    // name the same bytes, so neither is the sender's mistake.
+    for (const bytes of ["aGk", "aG\nk="]) {
+      const messages = [
+        {
+          role: "user",
+          content: [{ image: { format: "png", source: { bytes } } }],
+        },
+      ];
+      assert.deepEqual(decodeMessages(messages), [
+        {
+          role: "user",
+          content: [{ image: { format: "png", source: { bytes: HI } } }],
+        },
+      ]);
+    }
   });
 
   test("keeps an empty conversation empty", () => {
@@ -207,6 +211,12 @@ describe("decodeMessages", () => {
       {
         role: "user",
         content: [{ image: { format: "png", source: { bytes: "a*Gk=" } } }],
+      },
+    ]);
+    rejects([
+      {
+        role: "user",
+        content: [{ image: { format: "png", source: { bytes: "a" } } }],
       },
     ]);
   });

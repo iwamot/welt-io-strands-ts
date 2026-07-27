@@ -105,8 +105,6 @@ const DOCUMENT_FORMATS: ReadonlySet<string> = new Set([
   "xml",
 ]);
 
-const PADDING_CHAR_CODE = "=".charCodeAt(0);
-
 const VIDEO_FORMATS: ReadonlySet<string> = new Set([
   "3gp",
   "flv",
@@ -305,25 +303,20 @@ function decodedSourceBytes(
       `a ${kind} block needs base64 source.bytes, got ${shown(bytes)}`,
     );
   }
-  const decoded = Buffer.from(bytes, "base64");
-  // Buffer.from discards what is not base64 instead of failing, so bytes
-  // that were never valid would otherwise reach the model as plausible
-  // garbage. Re-encoding catches that; padding is left out of the
-  // comparison, being a formatting detail rather than lost content.
-  if (unpadded(decoded.toString("base64")) !== unpadded(bytes)) {
+  // atob rather than Buffer.from: Buffer.from discards what is not base64
+  // and returns bytes that were never encoded, where atob refuses. It
+  // decodes to a latin1 string, one character per byte.
+  let binary: string;
+  try {
+    binary = atob(bytes);
+  } catch {
     throw new TypeError(`a ${kind} block's source.bytes is not valid base64`);
   }
-  return new Uint8Array(decoded);
-}
-
-// Trailing "=" is stripped by scanning rather than with /=+$/, whose
-// backtracking is quadratic on the run of "=" a hostile payload can carry.
-function unpadded(base64: string): string {
-  let end = base64.length;
-  while (end > 0 && base64.charCodeAt(end - 1) === PADDING_CHAR_CODE) {
-    end -= 1;
+  const decoded = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    decoded[i] = binary.charCodeAt(i);
   }
-  return base64.slice(0, end);
+  return decoded;
 }
 
 function shown(value: unknown): string {
