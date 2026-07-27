@@ -105,6 +105,8 @@ const DOCUMENT_FORMATS: ReadonlySet<string> = new Set([
   "xml",
 ]);
 
+const PADDING_CHAR_CODE = "=".charCodeAt(0);
+
 const VIDEO_FORMATS: ReadonlySet<string> = new Set([
   "3gp",
   "flv",
@@ -314,8 +316,14 @@ function decodedSourceBytes(
   return new Uint8Array(decoded);
 }
 
+// Trailing "=" is stripped by scanning rather than with /=+$/, whose
+// backtracking is quadratic on the run of "=" a hostile payload can carry.
 function unpadded(base64: string): string {
-  return base64.replace(/=+$/, "");
+  let end = base64.length;
+  while (end > 0 && base64.charCodeAt(end - 1) === PADDING_CHAR_CODE) {
+    end -= 1;
+  }
+  return base64.slice(0, end);
 }
 
 function shown(value: unknown): string {
