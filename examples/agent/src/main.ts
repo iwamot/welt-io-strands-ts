@@ -15,6 +15,7 @@
 
 import { Buffer } from "node:buffer";
 import { randomUUID } from "node:crypto";
+import type { AgentStreamEvent } from "@strands-agents/sdk";
 import { Agent, tool } from "@strands-agents/sdk";
 import type { RenderableEvent } from "@welt-io/strands";
 import {
@@ -224,7 +225,7 @@ function newAgent(): Agent {
  */
 async function* replies(
   agent: Agent,
-  stream: AsyncIterable<unknown>,
+  stream: AsyncIterable<AgentStreamEvent>,
 ): AsyncGenerator<{ data: RenderableEvent }> {
   let interrupted = false;
   for await (const event of renderableEvents(stream, {
@@ -260,14 +261,6 @@ const app = new BedrockAgentCoreApp({
       }
 
       const messages = decodeMessages(envelope.messages);
-      if (messages.length === 0) {
-        yield {
-          data: {
-            data: "I received an empty conversation, so there is nothing to reply to.",
-          },
-        };
-        return;
-      }
       const agent = newAgent();
       yield* replies(agent, agent.stream(messages));
     },

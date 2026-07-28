@@ -1,7 +1,17 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import type { InterruptInput, InterruptOption } from "../src/index.ts";
-import { interruptReason } from "../src/index.ts";
+import { interruptReason, WireContractError } from "../src/index.ts";
+
+const rejects = (
+  message: string,
+  options?: readonly InterruptOption[],
+  input?: InterruptInput,
+) =>
+  assert.throws(
+    () => interruptReason(message, options, input),
+    WireContractError,
+  );
 
 describe("interruptReason", () => {
   test("builds a message with options", () => {
@@ -58,22 +68,20 @@ describe("interruptReason", () => {
   }
 
   test("throws on an empty message", () => {
-    assert.throws(() => interruptReason("", [{ value: "y" }]), TypeError);
+    rejects("", [{ value: "y" }]);
   });
 
   test("throws when neither options nor input is given", () => {
-    assert.throws(() => interruptReason("m"), TypeError);
+    rejects("m");
   });
 
   test("throws on empty options", () => {
-    assert.throws(() => interruptReason("m", []), TypeError);
+    rejects("m", []);
   });
 
-  test("throws on an unknown option key", () => {
-    const options = [
-      { value: "y", text: "Yes" },
-    ] as unknown as InterruptOption[];
-    assert.throws(() => interruptReason("m", options), TypeError);
+  test("throws on an unknown widget key", () => {
+    rejects("m", [{ value: "y", text: "Yes" }] as unknown as InterruptOption[]);
+    rejects("m", undefined, { placeholder: "x" } as unknown as InterruptInput);
   });
 
   const badOptions: unknown[] = [
@@ -87,27 +95,29 @@ describe("interruptReason", () => {
   ];
   for (const option of badOptions) {
     test(`throws on an invalid option: ${JSON.stringify(option)}`, () => {
-      const options = [option] as unknown as InterruptOption[];
-      assert.throws(() => interruptReason("m", options), TypeError);
+      rejects("m", [option] as unknown as InterruptOption[]);
     });
   }
 
-  test("throws on an unknown input key", () => {
-    const input = { placeholder: "x" } as unknown as InterruptInput;
-    assert.throws(() => interruptReason("m", undefined, input), TypeError);
+  for (const input of [{ label: "" }, { label: 5 }, { multiline: "yes" }]) {
+    test(`throws on an invalid input: ${JSON.stringify(input)}`, () => {
+      rejects("m", undefined, input as InterruptInput);
+    });
+  }
+
+  test("holds options to what one Slack actions block renders", () => {
+    const options = Array.from({ length: 25 }, (_, index) => ({
+      value: `v${index}`,
+    }));
+    assert.equal(interruptReason("m", options).options?.length, 25);
+    rejects("m", [...options, { value: "v25" }]);
+    rejects("m", [{ value: "v".repeat(1801) }]);
   });
 
-  for (const input of [{ label: "" }, { label: 5 }]) {
-    test(`throws on an invalid input label: ${JSON.stringify(input)}`, () => {
-      assert.throws(
-        () => interruptReason("m", undefined, input as InterruptInput),
-        TypeError,
-      );
+  test("names the widget that broke", () => {
+    assert.throws(() => interruptReason("m", [{ value: "y" }, { value: "" }]), {
+      name: "WireContractError",
+      path: "$.options[1].value",
     });
-  }
-
-  test("throws on a non-boolean multiline", () => {
-    const input = { multiline: "yes" } as unknown as InterruptInput;
-    assert.throws(() => interruptReason("m", undefined, input), TypeError);
   });
 });
