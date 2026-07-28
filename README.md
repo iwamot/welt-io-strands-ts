@@ -11,6 +11,8 @@ The [Strands Agents](https://strandsagents.com/) (TypeScript) adapter for [Welt]
 npm install @welt-io/strands
 ```
 
+`@strands-agents/sdk` comes with it as a peer dependency: the messages this package builds and the stream events it reads are the SDK's own types.
+
 ## Usage
 
 See [`examples/agent`](examples/agent) — the smallest complete agent built on this package (text streaming, tool use, file output, file input, and human-approval tools). The sections below explain the adapters it wires in.
@@ -36,7 +38,15 @@ Turns Welt's resume payload — a mapping of interrupt id to the answer a human 
 
 #### Payloads that violate the contract
 
-Both functions throw a `TypeError` on a payload the [wire contract](https://github.com/iwamot/welt/blob/main/docs/wire.md#malformed-payloads) does not describe — an unknown role, a block missing its bytes, base64 that was never valid. Welt does not send those, so a throw means the caller is not Welt or Welt has a bug; either way, decoding what is left would hand the agent a conversation with a turn missing, and answering from a question that was never asked is worse than not answering.
+Both functions check the payload against [Welt's published schema](https://github.com/iwamot/welt/blob/main/schema/request-payload.schema.json) and decode what it vouched for. A violation throws a `WireContractError`, which names where it broke:
+
+```
+$[1].content[0].image.source.bytes: must NOT have fewer than 1 characters
+```
+
+Nothing else is checked. The one thing the schema annotates without asserting is that the file bytes are base64, which `decodeMessages` finds out by decoding them: a string that is not throws there instead.
+
+Welt does not send a payload that fails this, so a throw means the caller is not Welt or Welt has a bug; either way, decoding what is left would hand the agent a conversation with a turn missing, and answering from a question that was never asked is worse than not answering.
 
 ### Outbound
 
@@ -69,11 +79,11 @@ Uploaded names come from the block — a document's own `name` plus its format, 
 
 #### `fileEvent(name, data)`
 
-Builds the same `file` event from a filename and raw bytes, for the files the host app attaches itself — yield it alongside the reduced stream. Tools have no use for it: they hand files to the agent as content blocks, and `filesFrom` decides which of those reach the thread.
+Builds the same `file` event from a filename and raw bytes, for the files the host app attaches itself — yield it alongside the reduced stream. A nameless file throws a `WireContractError`, since Welt drops one. Tools have no use for it: they hand files to the agent as content blocks, and `filesFrom` decides which of those reach the thread.
 
 #### `interruptReason(message, options, input)`
 
-Builds the structured reason Welt renders as a message with the specified widgets — choice buttons (`options`), a free-text field (`input`), or both. The specs are [the wire's own shapes](https://github.com/iwamot/welt/blob/main/docs/wire.md#interrupt); omitted fields keep Welt's defaults, and a typo becomes an immediate `TypeError` instead of a silent fallback to Welt's default rendering:
+Builds the structured reason Welt renders as a message with the specified widgets — choice buttons (`options`), a free-text field (`input`), or both. The specs are [the wire's own shapes](https://github.com/iwamot/welt/blob/main/docs/wire.md#interrupt); omitted fields keep Welt's defaults. What it builds is checked against Welt's [reply schema](https://github.com/iwamot/welt/blob/main/schema/reply-events.schema.json) before it is returned, so a typo throws a `WireContractError` instead of a silent fallback to Welt's default rendering:
 
 ```ts
 const answer = context.interrupt<string>({

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { fileEvent } from "../src/index.ts";
+import { fileEvent, WireContractError } from "../src/index.ts";
 
 describe("fileEvent", () => {
   test("builds a file event with base64 bytes", () => {
@@ -15,7 +15,8 @@ describe("fileEvent", () => {
     });
   });
 
-  test("throws on an empty name", () => {
-    assert.throws(() => fileEvent("", new Uint8Array()), TypeError);
+  test("throws on an empty name, which Welt drops", () => {
+    assert.throws(() => fileEvent("", new Uint8Array()), WireContractError);
+    assert.throws(() => fileEvent("", new Uint8Array()), { path: "$.name" });
   });
 });

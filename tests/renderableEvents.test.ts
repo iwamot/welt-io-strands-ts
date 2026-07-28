@@ -1,68 +1,123 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
+import type {
+  AgentStreamEvent,
+  ContentBlock,
+  Interrupt,
+  JSONValue,
+  ModelStreamEvent,
+  ToolResultContent,
+} from "@strands-agents/sdk";
+import {
+  AgentResult,
+  DocumentBlock,
+  ImageBlock,
+  JsonBlock,
+  Message,
+  TextBlock,
+  ToolResultBlock,
+  VideoBlock,
+} from "@strands-agents/sdk";
 import type { RenderableEventsOptions } from "../src/index.ts";
 import { renderableEvents } from "../src/index.ts";
 
 const HI = new Uint8Array([104, 105]); // "aGk=" encoded
 
+/**
+ * Stand in for one event of `Agent.stream()`.
+ *
+ * The SDK builds each event around the Agent itself, which nothing outside
+ * the SDK can build; these carry the fields `renderableEvents` reads, and
+ * the blocks inside them are the SDK's own.
+ */
+function streamEvent(event: object): AgentStreamEvent {
+  return event as AgentStreamEvent;
+}
+
 async function* stream(
-  events: readonly unknown[],
-): AsyncGenerator<unknown, void, undefined> {
+  events: readonly AgentStreamEvent[],
+): AsyncGenerator<AgentStreamEvent, void, undefined> {
   for (const event of events) {
     yield event;
   }
 }
 
 function rendered(
-  events: readonly unknown[],
+  events: readonly AgentStreamEvent[],
   options?: RenderableEventsOptions,
 ) {
   return Array.fromAsync(renderableEvents(stream(events), options));
 }
 
 /** The stream's announcement of a tool call, which names it. */
-function toolCallStart(toolUseId: string, name: string) {
-  return {
+const toolCallStart = (toolUseId: string, name: string) =>
+  streamEvent({
     type: "beforeToolCallEvent",
     toolUse: { toolUseId, name, input: {} },
-  };
-}
+  });
 
-function modelStreamUpdate(event: unknown) {
-  return { type: "modelStreamUpdateEvent", event };
-}
+const modelStreamUpdate = (event: ModelStreamEvent) =>
+  streamEvent({ type: "modelStreamUpdateEvent", event });
 
-function textDelta(text: unknown) {
-  return modelStreamUpdate({
+const textDelta = (text: string) =>
+  modelStreamUpdate({
     type: "modelContentBlockDeltaEvent",
     delta: { type: "textDelta", text },
   });
-}
+
+const toolResult = (
+  toolUseId: string,
+  content: ToolResultContent[],
+  status: "success" | "error" = "success",
+) =>
+  streamEvent({
+    type: "toolResultEvent",
+    result: new ToolResultBlock({ toolUseId, status, content }),
+  });
+
+const modelMessage = (content: ContentBlock[]) =>
+  streamEvent({
+    type: "modelMessageEvent",
+    message: new Message({ role: "assistant", content }),
+    stopReason: "endTurn",
+  });
+
+const interrupt = (id: string, name: string, reason: JSONValue) =>
+  ({ id, name, reason, source: "tool" }) as Interrupt;
+
+const agentResult = (interrupts?: Interrupt[]) =>
+  streamEvent({
+    type: "agentResultEvent",
+    result: new AgentResult({
+      stopReason: interrupts === undefined ? "endTurn" : "interrupt",
+      lastMessage: new Message({ role: "assistant", content: [] }),
+      invocationState: {},
+      ...(interrupts === undefined ? {} : { interrupts }),
+    }),
+  });
+
+const image = () => new ImageBlock({ format: "png", source: { bytes: HI } });
 
 describe("renderableEvents", () => {
-  test("drops unrenderable events", async () => {
+  test("drops the events Welt does not render", async () => {
     const events = [
-      null,
-      "start",
-      ["textDelta"],
-      { type: "beforeInvocationEvent" },
-      { type: "messageAddedEvent", message: { content: [{ text: "x" }] } },
-      { type: "contentBlockEvent", contentBlock: { type: "textBlock" } },
-      { type: "modelStreamUpdateEvent" },
-      modelStreamUpdate("x"),
+      streamEvent({ type: "beforeInvocationEvent" }),
+      streamEvent({ type: "contentBlockEvent", contentBlock: image() }),
+      streamEvent({
+        type: "messageAddedEvent",
+        message: new Message({ role: "assistant", content: [image()] }),
+      }),
       modelStreamUpdate({ type: "modelMessageStartEvent", role: "assistant" }),
+      modelStreamUpdate({ type: "modelContentBlockStopEvent" }),
+      modelStreamUpdate({ type: "modelContentBlockStartEvent" }),
       modelStreamUpdate({
         type: "modelMessageStopEvent",
         stopReason: "endTurn",
       }),
-      modelStreamUpdate({ type: "modelMetadataEvent" }),
       modelStreamUpdate({
         type: "modelContentBlockDeltaEvent",
-        delta: { type: "reasoningContentDelta", text: "hmm" },
+        delta: { type: "toolUseInputDelta", input: '{"a":' },
       }),
-      modelStreamUpdate({ type: "modelContentBlockStopEvent" }),
-      modelStreamUpdate({ type: "modelContentBlockStartEvent" }),
-      modelStreamUpdate({ type: "modelContentBlockStartEvent", start: "x" }),
     ];
     assert.deepEqual(await rendered(events), []);
   });
@@ -71,8 +126,9 @@ describe("renderableEvents", () => {
     assert.deepEqual(await rendered([textDelta("Hello")]), [{ data: "Hello" }]);
   });
 
-  test("drops empty or non-string text", async () => {
-    assert.deepEqual(await rendered([textDelta(""), textDelta(5)]), []);
+  test("drops a delta the model left empty", async () => {
+    // Welt renders nothing for it, and the wire has no event for nothing.
+    assert.deepEqual(await rendered([textDelta("")]), []);
   });
 
   test("turns a tool-use start into the tool-use indicator", async () => {
@@ -87,65 +143,27 @@ describe("renderableEvents", () => {
     ]);
   });
 
-  test("nulls missing tool-use-start fields", async () => {
+  test("slims tool results to the toolUseId and status", async () => {
     const events = [
-      modelStreamUpdate({
-        type: "modelContentBlockStartEvent",
-        start: { type: "toolUseStart", toolUseId: 5 },
-      }),
-    ];
-    assert.deepEqual(await rendered(events), [
-      { current_tool_use: { toolUseId: null, name: null } },
-    ]);
-  });
-
-  test("slims tool results to the status", async () => {
-    const events = [
-      {
-        type: "toolResultEvent",
-        result: {
-          type: "toolResultBlock",
-          toolUseId: "t1",
-          status: "success",
-          content: [{ type: "textBlock", text: "big output" }],
-        },
-      },
+      toolResult("t1", [new TextBlock("big output")]),
+      toolResult("t2", [], "error"),
     ];
     assert.deepEqual(await rendered(events), [
       { tool_result: { toolUseId: "t1", status: "success" } },
-    ]);
-  });
-
-  test("keeps the error status and nulls a missing toolUseId", async () => {
-    const events = [
-      { type: "toolResultEvent", result: { status: "error" } },
-      { type: "toolResultEvent", result: {} },
-      { type: "toolResultEvent", result: "x" },
-    ];
-    assert.deepEqual(await rendered(events), [
-      { tool_result: { toolUseId: null, status: "error" } },
-      { tool_result: { toolUseId: null, status: "success" } },
+      { tool_result: { toolUseId: "t2", status: "error" } },
     ]);
   });
 
   test("keeps the files of a tool left out of filesFrom off the wire", async () => {
     const events = [
       toolCallStart("t1", "file_read"),
-      {
-        type: "toolResultEvent",
-        result: {
-          toolUseId: "t1",
-          status: "success",
-          content: [
-            {
-              type: "documentBlock",
-              name: "manual",
-              format: "pdf",
-              source: { type: "documentSourceBytes", bytes: HI },
-            },
-          ],
-        },
-      },
+      toolResult("t1", [
+        new DocumentBlock({
+          name: "manual",
+          format: "pdf",
+          source: { bytes: HI },
+        }),
+      ]),
     ];
     const only = {
       tool_result: { toolUseId: "t1", status: "success" },
@@ -154,86 +172,39 @@ describe("renderableEvents", () => {
     assert.deepEqual(await rendered(events, { filesFrom: new Set<string>() }), [
       only,
     ]);
+    assert.deepEqual(await rendered(events, {}), [only]);
     assert.deepEqual(await rendered(events), [only]);
   });
 
   test("keeps files off the wire when the tool behind them is unknown", async () => {
-    const result = {
-      toolUseId: "t1",
-      status: "success",
-      content: [
-        {
-          type: "documentBlock",
-          name: "report",
-          format: "md",
-          source: { type: "documentSourceBytes", bytes: HI },
-        },
-      ],
-    };
-    // Announcements that name no tool for this result: none at all, a
-    // malformed one, and one for a different call.
-    const unnaming: unknown[][] = [
-      [],
-      [{ type: "beforeToolCallEvent" }],
-      [{ type: "beforeToolCallEvent", toolUse: "maker" }],
-      [{ type: "beforeToolCallEvent", toolUse: { toolUseId: "t1" } }],
-      [{ type: "beforeToolCallEvent", toolUse: { name: "maker" } }],
-      [
-        {
-          type: "beforeToolCallEvent",
-          toolUse: { toolUseId: 1, name: "maker" },
-        },
-      ],
-      [{ type: "beforeToolCallEvent", toolUse: { toolUseId: "t1", name: 5 } }],
-      [toolCallStart("t2", "maker")],
-    ];
-    for (const announcement of unnaming) {
-      const events = [...announcement, { type: "toolResultEvent", result }];
-      assert.deepEqual(await rendered(events, { filesFrom: ["maker"] }), [
-        { tool_result: { toolUseId: "t1", status: "success" } },
-      ]);
-    }
-
-    const idless = [
-      toolCallStart("t1", "maker"),
-      {
-        type: "toolResultEvent",
-        result: { ...result, toolUseId: undefined },
-      },
-    ];
-    assert.deepEqual(await rendered(idless, { filesFrom: ["maker"] }), [
-      { tool_result: { toolUseId: null, status: "success" } },
+    const result = toolResult("t1", [
+      new DocumentBlock({
+        name: "report",
+        format: "md",
+        source: { bytes: HI },
+      }),
     ]);
+    // No announcement at all, and one that named a different call.
+    for (const announcements of [[], [toolCallStart("t2", "maker")]]) {
+      assert.deepEqual(
+        await rendered([...announcements, result], { filesFrom: ["maker"] }),
+        [{ tool_result: { toolUseId: "t1", status: "success" } }],
+      );
+    }
   });
 
   test("emits a file event per file block a tool named in filesFrom returned", async () => {
     const events = [
       toolCallStart("t1", "create_sample_file"),
-      {
-        type: "toolResultEvent",
-        result: {
-          toolUseId: "t1",
-          status: "success",
-          content: [
-            {
-              type: "imageBlock",
-              format: "png",
-              source: { type: "imageSourceBytes", bytes: HI },
-            },
-            {
-              type: "documentBlock",
-              name: "Report",
-              format: "pdf",
-              source: { type: "documentSourceBytes", bytes: HI },
-            },
-            {
-              type: "videoBlock",
-              format: "3gp",
-              source: { type: "videoSourceBytes", bytes: HI },
-            },
-          ],
-        },
-      },
+      toolResult("t1", [
+        image(),
+        new DocumentBlock({
+          name: "Report",
+          format: "pdf",
+          source: { bytes: HI },
+        }),
+        new VideoBlock({ format: "3gp", source: { bytes: HI } }),
+      ]),
     ];
     assert.deepEqual(
       await rendered(events, { filesFrom: ["create_sample_file"] }),
@@ -246,57 +217,41 @@ describe("renderableEvents", () => {
     );
   });
 
-  test("skips tool-result blocks without raw bytes", async () => {
+  test("keeps blocks that hold no file bytes off the wire", async () => {
+    // Text and JSON are not files, and a block whose source is an S3
+    // location, a URL, or text of its own keeps its file elsewhere.
     const events = [
       toolCallStart("t1", "maker"),
-      {
-        type: "toolResultEvent",
-        result: {
-          toolUseId: "t1",
-          status: "success",
-          content: [
-            "x",
-            { type: "textBlock", text: "not a file" },
-            { type: "jsonBlock", json: { a: 1 } },
-            { type: "imageBlock", format: "png" },
-            { type: "imageBlock", format: "png", source: "x" },
-            {
-              type: "imageBlock",
-              format: "png",
-              source: { type: "imageSourceBytes", bytes: "aGk=" },
-            },
-            {
-              type: "imageBlock",
-              format: "png",
-              source: { type: "imageSourceUrl", url: "https://example.com" },
-            },
-          ],
-        },
-      },
+      toolResult("t1", [
+        new TextBlock("not a file"),
+        new JsonBlock({ json: { a: 1 } }),
+        new ImageBlock({
+          format: "png",
+          source: { location: { type: "s3", uri: "s3://bucket/key" } },
+        }),
+        new ImageBlock({ format: "png", source: { url: "https://e.test/i" } }),
+        new DocumentBlock({
+          name: "inline",
+          format: "txt",
+          source: { text: "read me" },
+        }),
+        new VideoBlock({
+          format: "mp4",
+          source: { location: { type: "s3", uri: "s3://bucket/clip" } },
+        }),
+      ]),
     ];
     assert.deepEqual(await rendered(events, { filesFrom: ["maker"] }), [
       { tool_result: { toolUseId: "t1", status: "success" } },
     ]);
   });
 
-  test("names a file after its kind when the block has no name", async () => {
+  test("names a file after its kind when the document has no name", async () => {
     const events = [
       toolCallStart("t1", "maker"),
-      {
-        type: "toolResultEvent",
-        result: {
-          toolUseId: "t1",
-          status: "success",
-          content: [
-            {
-              type: "documentBlock",
-              name: "",
-              format: "csv",
-              source: { type: "documentSourceBytes", bytes: HI },
-            },
-          ],
-        },
-      },
+      toolResult("t1", [
+        new DocumentBlock({ name: "", format: "csv", source: { bytes: HI } }),
+      ]),
     ];
     assert.deepEqual(await rendered(events, { filesFrom: ["maker"] }), [
       { tool_result: { toolUseId: "t1", status: "success" } },
@@ -304,75 +259,21 @@ describe("renderableEvents", () => {
     ]);
   });
 
-  test("omits the extension when the block has no format", async () => {
-    const events = [
-      toolCallStart("t1", "maker"),
-      {
-        type: "toolResultEvent",
-        result: {
-          toolUseId: "t1",
-          status: "success",
-          content: [
-            {
-              type: "imageBlock",
-              source: { type: "imageSourceBytes", bytes: HI },
-            },
-          ],
-        },
-      },
-    ];
-    assert.deepEqual(await rendered(events, { filesFrom: ["maker"] }), [
-      { tool_result: { toolUseId: "t1", status: "success" } },
-      { file: { name: "image", bytes: "aGk=" } },
-    ]);
-  });
-
   test("emits a file event per file block of the assistant message", async () => {
-    const events = [
-      {
-        type: "modelMessageEvent",
-        message: {
-          role: "assistant",
-          content: [
-            { type: "textBlock", text: "here you go" },
-            {
-              type: "imageBlock",
-              format: "png",
-              source: { type: "imageSourceBytes", bytes: HI },
-            },
-          ],
-        },
-        stopReason: "endTurn",
-      },
-    ];
+    const events = [modelMessage([new TextBlock("here you go"), image()])];
     assert.deepEqual(await rendered(events), [
       { file: { name: "image.png", bytes: "aGk=" } },
     ]);
-  });
-
-  test("ignores malformed model messages", async () => {
-    const events = [
-      { type: "modelMessageEvent" },
-      { type: "modelMessageEvent", message: "x" },
-      { type: "modelMessageEvent", message: { content: "x" } },
-    ];
-    assert.deepEqual(await rendered(events), []);
   });
 
   test("ends an interrupted stream with the pending interrupts", async () => {
     const reason = { message: "Deploy?", options: [{ value: "y" }] };
     const events = [
       textDelta("Working on it."),
-      {
-        type: "agentResultEvent",
-        result: {
-          stopReason: "interrupt",
-          interrupts: [
-            { id: "i1", name: "approval", reason },
-            { id: "i2", name: "question", reason: "free-form" },
-          ],
-        },
-      },
+      agentResult([
+        interrupt("i1", "approval", reason),
+        interrupt("i2", "question", "free-form"),
+      ]),
     ];
     assert.deepEqual(await rendered(events), [
       { data: "Working on it." },
@@ -381,27 +282,7 @@ describe("renderableEvents", () => {
     ]);
   });
 
-  test("yields nothing for the usual result without interrupts", async () => {
-    const events = [
-      { type: "agentResultEvent", result: { stopReason: "endTurn" } },
-      { type: "agentResultEvent", result: "x" },
-      { type: "agentResultEvent" },
-    ];
-    assert.deepEqual(await rendered(events), []);
-  });
-
-  test("skips interrupts without a usable id and defaults the name", async () => {
-    const events = [
-      {
-        type: "agentResultEvent",
-        result: {
-          stopReason: "interrupt",
-          interrupts: ["x", { name: "no-id" }, { id: "" }, { id: "i1" }],
-        },
-      },
-    ];
-    assert.deepEqual(await rendered(events), [
-      { interrupt: { id: "i1", name: "", reason: undefined } },
-    ]);
+  test("yields nothing for the usual result, which has no interrupts", async () => {
+    assert.deepEqual(await rendered([agentResult()]), []);
   });
 });
