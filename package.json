@@ -45,7 +45,7 @@
     "test": "mkdir -p coverage && node --test --experimental-test-coverage --test-coverage-include='src/*.ts' --test-coverage-lines=100 --test-coverage-functions=100 --test-coverage-branches=100 --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info 'tests/*.test.ts'"
   },
   "peerDependencies": {
-    "@strands-agents/sdk": "^1.10.0"
+    "@strands-agents/sdk": ">=1.10.0"
   },
   "devDependencies": {
     "@strands-agents/sdk": "1.11.2",
