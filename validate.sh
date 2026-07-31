@@ -10,8 +10,6 @@ mise install
 aube install --frozen-lockfile
 aube licenses
 aube audit --fix update --ignore-unfixable
-# Checks the vendored wire schemas and compiles them into the package.
-node scripts/generate-schema.ts
 aube run check:write
 aube run build
 aube run typecheck

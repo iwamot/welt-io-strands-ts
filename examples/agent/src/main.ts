@@ -17,7 +17,7 @@ import { Buffer } from "node:buffer";
 import { randomUUID } from "node:crypto";
 import type { AgentStreamEvent } from "@strands-agents/sdk";
 import { Agent, tool } from "@strands-agents/sdk";
-import type { RenderableEvent } from "@welt-io/strands";
+import type { RenderableEvent, WireMessage } from "@welt-io/strands";
 import {
   decodeInterruptResponses,
   decodeMessages,
@@ -241,12 +241,24 @@ async function* replies(
   }
 }
 
+/**
+ * Welt's payload, which carries one of the two envelopes.
+ *
+ * What Welt sends is taken as correct: it checks its own output against
+ * the wire contract before sending it, so this says what arrives rather
+ * than checking it. A payload carrying neither key is Welt's bug, and the
+ * error it raises is reported as an `error` event by the SDK.
+ */
+type WeltPayload =
+  | { messages: WireMessage[] }
+  | { interrupt_responses: Record<string, string> };
+
 const app = new BedrockAgentCoreApp({
   invocationHandler: {
     process: async function* (payload: unknown) {
-      const envelope = payloadEnvelope(payload);
+      const envelope = payload as WeltPayload;
 
-      if (envelope.interruptResponses !== undefined) {
+      if ("interrupt_responses" in envelope) {
         const agent = interruptedAgent;
         interruptedAgent = null;
         if (agent === null) {
@@ -255,7 +267,9 @@ const app = new BedrockAgentCoreApp({
           // resume-failure notice.
           throw new Error("No interrupted agent to resume in this session.");
         }
-        const responses = decodeInterruptResponses(envelope.interruptResponses);
+        const responses = decodeInterruptResponses(
+          envelope.interrupt_responses,
+        );
         yield* replies(agent, agent.stream(responses));
         return;
       }
@@ -266,18 +280,5 @@ const app = new BedrockAgentCoreApp({
     },
   },
 });
-
-function payloadEnvelope(payload: unknown): {
-  messages?: unknown;
-  interruptResponses?: unknown;
-} {
-  if (typeof payload !== "object" || payload === null) {
-    return {};
-  }
-  const record = payload as Record<string, unknown>;
-  return "interrupt_responses" in record
-    ? { interruptResponses: record.interrupt_responses }
-    : { messages: record.messages };
-}
 
 app.run();

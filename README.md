@@ -19,7 +19,7 @@ See [`examples/agent`](examples/agent) — the smallest complete agent built on 
 
 ## API
 
-The wire between Welt and the agent is JSON, specified by [Welt's wire contract](https://github.com/iwamot/welt/blob/main/docs/wire.md). Strands speaks nearly the same shapes, but not exactly, in either direction. Two functions adapt the inbound payload, three the outbound stream.
+The wire between Welt and the agent is JSON, specified by [Welt's wire contract](https://github.com/iwamot/welt/blob/main/docs/wire.md). Strands speaks nearly the same shapes, but not exactly, in either direction. Two functions adapt the inbound payload, two the outbound stream.
 
 ### Inbound
 
@@ -36,17 +36,9 @@ const stream = agent.stream(decodeMessages(payload.messages));
 
 Turns Welt's resume payload — a mapping of interrupt id to the answer a human chose — into the `interruptResponse` content items Strands resumes from. The returned list feeds `Agent.stream()` on the interrupted `Agent` instance directly (see the [example agent](examples/agent) for how the host app keeps that instance around).
 
-#### Payloads that violate the contract
+#### What arrives is taken as correct
 
-Both functions check the payload against [Welt's published schema](https://github.com/iwamot/welt/blob/main/schema/request-payload.schema.json) and decode what it vouched for. A violation throws a `WireContractError`, which names where it broke:
-
-```
-$[1].content[0].image.source.bytes: must NOT have fewer than 1 characters
-```
-
-Nothing else is checked. The one thing the schema annotates without asserting is that the file bytes are base64, which `decodeMessages` finds out by decoding them: a string that is not throws there instead.
-
-Welt does not send a payload that fails this, so a throw means the caller is not Welt or Welt has a bug; either way, decoding what is left would hand the agent a conversation with a turn missing, and answering from a question that was never asked is worse than not answering.
+Welt builds the payload and checks its own output against the wire contract before releasing it, so these two functions do no checking of their own. Their parameter types — `WireMessage[]` and `Record<string, string>` — say what arrives, and the host app asserts the payload is Welt's where it enters (see the [example agent](examples/agent)). A payload that departs from the contract is a bug on the sending side rather than an input to guard against, and it surfaces as an ordinary error from whatever touches it first — `decodeMessages` decodes the file bytes, so bytes that are not base64 throw a `DOMException` there.
 
 ### Outbound
 
@@ -77,13 +69,11 @@ A tool left out keeps its files to the model: one that reads a PDF for the model
 
 Uploaded names come from the block — a document's own `name` plus its format, the block's kind for the rest (`image.png`). That name is the model's handle on the document as much as a filename, and Converse rejects a request whose messages carry two documents under one name, so a tool that returns documents has to keep their names apart across the run: the example appends a short uuid to each.
 
-#### `fileEvent(name, data)`
-
-Builds the same `file` event from a filename and raw bytes, for the files the host app attaches itself — yield it alongside the reduced stream. A nameless file throws a `WireContractError`, since Welt drops one. Tools have no use for it: they hand files to the agent as content blocks, and `filesFrom` decides which of those reach the thread.
+Each event carries only what Welt reads — a `current_tool_use` is the name and id behind the indicator, a `tool_result` the id and status — so tool arguments and tool output stay off the wire. An event with nothing to render is not sent at all: a text chunk the model left empty, a block whose file lives elsewhere (in S3, behind a URL, or as text of its own) rather than in bytes the block carries, and a file whose bytes are empty, which Slack refuses and fails the whole reply with. The empty file leaves a [process warning](https://nodejs.org/api/process.html#event-warning) behind, naming what returned it.
 
 #### `interruptReason(message, options, input)`
 
-Builds the structured reason Welt renders as a message with the specified widgets — choice buttons (`options`), a free-text field (`input`), or both. The specs are [the wire's own shapes](https://github.com/iwamot/welt/blob/main/docs/wire.md#interrupt); omitted fields keep Welt's defaults. What it builds is checked against Welt's [reply schema](https://github.com/iwamot/welt/blob/main/schema/reply-events.schema.json) before it is returned, so a typo throws a `WireContractError` instead of a silent fallback to Welt's default rendering:
+Builds the structured reason Welt renders as a message with the specified widgets — choice buttons (`options`), a free-text field (`input`), or both. The specs are [the wire's own shapes](https://github.com/iwamot/welt/blob/main/docs/wire.md#interrupt), typed as `OptionSpec` and `InputSpec`, and omitted fields keep Welt's defaults:
 
 ```ts
 const answer = context.interrupt<string>({
@@ -98,6 +88,8 @@ const answer = context.interrupt<string>({
   ),
 });
 ```
+
+Building the reason through this helper is what makes a typo an error. `ToolContext.interrupt` takes its reason as `JSONValue`, so an object literal handed to it directly is checked for being JSON and nothing more, and Welt's reaction to a reason it cannot match is its default **Approve** / **Deny** buttons — no error, no log, just widgets you did not ask for. The typed parameters catch a misspelled key before the run; the checks inside catch it in the runs the types miss, since TypeScript's excess-property check fires on an object literal written at the call site and not on one that reached it through a variable. A wrong type throws a `TypeError`, an unknown key or an empty required string an `Error`. What they check is the shape, not the size: how many buttons one Slack block holds, and how long a button value may be, are Welt's to enforce.
 
 [Welt's Interrupts doc](https://github.com/iwamot/welt/blob/main/docs/interrupts.md) covers the Slack side: how each reason renders, who can answer, multiple questions, and expiry. On the Strands side:
 

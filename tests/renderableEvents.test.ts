@@ -98,6 +98,34 @@ const agentResult = (interrupts?: Interrupt[]) =>
 
 const image = () => new ImageBlock({ format: "png", source: { bytes: HI } });
 
+/**
+ * Collect the process warnings this package emits while `run` runs.
+ *
+ * `process.emitWarning` is how a Node package says something the caller
+ * should know without failing the run, and a listener is how a test reads
+ * it back — the emission lands on the next tick, so the wait is what makes
+ * it observable.
+ */
+async function warningsOf(run: () => Promise<void>): Promise<string[]> {
+  // Drain first, then listen: a warning an earlier test emitted is still on
+  // its way, and this window is for the warnings `run` itself emits.
+  await new Promise((resolve) => setImmediate(resolve));
+  const collected: string[] = [];
+  const capture = (warning: Error) => {
+    if (warning.name === "WeltWarning") {
+      collected.push(warning.message);
+    }
+  };
+  process.on("warning", capture);
+  try {
+    await run();
+    await new Promise((resolve) => setImmediate(resolve));
+  } finally {
+    process.off("warning", capture);
+  }
+  return collected;
+}
+
 describe("renderableEvents", () => {
   test("drops the events Welt does not render", async () => {
     const events = [
@@ -219,7 +247,9 @@ describe("renderableEvents", () => {
 
   test("keeps blocks that hold no file bytes off the wire", async () => {
     // Text and JSON are not files, and a block whose source is an S3
-    // location, a URL, or text of its own keeps its file elsewhere.
+    // location, a URL, or text of its own keeps its file elsewhere. There
+    // is nothing to upload from a pointer, and nothing worth saying about
+    // one either.
     const events = [
       toolCallStart("t1", "maker"),
       toolResult("t1", [
@@ -241,8 +271,55 @@ describe("renderableEvents", () => {
         }),
       ]),
     ];
-    assert.deepEqual(await rendered(events, { filesFrom: ["maker"] }), [
+    let rendering: unknown;
+    const warnings = await warningsOf(async () => {
+      rendering = await rendered(events, { filesFrom: ["maker"] });
+    });
+    assert.deepEqual(rendering, [
       { tool_result: { toolUseId: "t1", status: "success" } },
+    ]);
+    assert.deepEqual(warnings, []);
+  });
+
+  test("keeps a file with no bytes off the wire", async () => {
+    const events = [
+      toolCallStart("t1", "create_sample_file"),
+      toolResult("t1", [
+        new DocumentBlock({
+          name: "sample",
+          format: "csv",
+          source: { bytes: new Uint8Array() },
+        }),
+      ]),
+    ];
+    let rendering: unknown;
+    const warnings = await warningsOf(async () => {
+      rendering = await rendered(events, { filesFrom: ["create_sample_file"] });
+    });
+    assert.deepEqual(rendering, [
+      { tool_result: { toolUseId: "t1", status: "success" } },
+    ]);
+    // Slack refuses a zero-byte upload and fails the whole reply with it,
+    // so the warning names the tool that returned the file — which the
+    // filename alone would not say.
+    assert.deepEqual(warnings, [
+      "Skipped an empty file from create_sample_file: sample.csv",
+    ]);
+  });
+
+  test("warns against the model for an empty file the model returned", async () => {
+    const events = [
+      modelMessage([
+        new ImageBlock({ format: "png", source: { bytes: new Uint8Array() } }),
+      ]),
+    ];
+    let rendering: unknown;
+    const warnings = await warningsOf(async () => {
+      rendering = await rendered(events);
+    });
+    assert.deepEqual(rendering, []);
+    assert.deepEqual(warnings, [
+      "Skipped an empty file from the model: image.png",
     ]);
   });
 

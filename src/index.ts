@@ -10,18 +10,21 @@
  * function here adapts one piece, keeping the host app a thin loop
  * around `Agent.stream()`.
  *
- * `renderableEvents` reduces the stream to the events Welt renders, with
- * the files of the tools the agent names base64-encoded. `fileEvent`
- * builds the same `file` event from a name and raw bytes, for the files
- * the host app attaches itself.
+ * What Welt sends is taken as correct. Welt builds the payload and checks
+ * its own output against the wire contract before releasing it, so a
+ * payload that departs from the contract is a bug on the sending side, not
+ * an input to guard against — the inbound parameter types say what
+ * arrives, and a value that is not it surfaces as an ordinary error from
+ * whatever touches it first. What this adapter checks is the other thing:
+ * the values its own caller passes to `interruptReason`, since Welt
+ * renders a reason it cannot match as its default buttons, silently.
  *
- * Neither direction is restated here. What arrives is checked against
- * Welt's published schemas, vendored as `schema/` and compiled into
- * `_schema.ts`, and what the builders produce is checked against them
- * before it is returned. The reply stream is read as what the SDK's types
- * say it is: `Agent.stream()` yields a closed union of event objects, so
- * each one is read for what it is rather than guarded against shapes the
- * SDK does not produce.
+ * The reply stream is read as what the SDK's types say it is:
+ * `Agent.stream()` yields a closed union of event objects, so each one is
+ * read for what it is rather than guarded against shapes the SDK does not
+ * produce. Only what Welt reads goes on the wire — an event carrying more
+ * than that costs bandwidth for something the renderer discards, and an
+ * event with nothing to render is not sent at all.
  */
 
 import { Buffer } from "node:buffer";
@@ -39,108 +42,14 @@ import type {
   ToolResultContent,
   VideoFormat,
 } from "@strands-agents/sdk";
-import type { ErrorObject, ValidateFunction } from "ajv/dist/2020.js";
-import { Ajv2020 } from "ajv/dist/2020.js";
-import { REPLY_EVENTS, REQUEST_PAYLOAD } from "./_schema.ts";
 
-// strict: false — the schemas are Welt's, written to the specification
-// rather than to Ajv's stricter reading of it.
-const ajv = new Ajv2020({ strict: false });
+// The `type` of the warnings this package emits, which a
+// `process.on("warning", ...)` listener reads as the warning's `name`.
+const WARNING_TYPE = "WeltWarning";
 
-/**
- * Build a validator for one definition of a wire schema.
- *
- * `decodeMessages` and `decodeInterruptResponses` each take one value out
- * of Welt's envelope rather than the envelope itself, and the builders
- * produce one reply shape each, so each validator points at the definition
- * for its own value.
- *
- * @param defs - The `$defs` of the schema carrying the definition.
- * @param definition - The name under those `$defs`.
- * @returns The validator.
- */
-function validator(defs: object, definition: string): ValidateFunction {
-  return ajv.compile({ $ref: `#/$defs/${definition}`, $defs: defs });
-}
-
-// Inbound: the two envelope values, each taken on its own.
-const MESSAGES = validator(REQUEST_PAYLOAD.$defs, "messages");
-const INTERRUPT_RESPONSES = validator(
-  REQUEST_PAYLOAD.$defs,
-  "interruptResponses",
-);
-
-// Outbound: what the builders below must produce for Welt to render it.
-const FILE = validator(REPLY_EVENTS.$defs, "file");
-const STRUCTURED_REASON = validator(REPLY_EVENTS.$defs, "structuredReason");
-
-/**
- * Thrown when a value does not match the shape Welt's wire contract gives
- * it: a payload Welt sent, or an event one of the builders below built.
- *
- * A payload that violates the contract is a bug on the sending side rather
- * than an input to interpret, and an event that violates it would reach the
- * Slack thread as Welt's fallback rendering instead of what was meant.
- */
-export class WireContractError extends Error {
-  /** Where it broke, as a path into the value (`$.content[0].text`). */
-  readonly path: string;
-
-  constructor(path: string, detail: string) {
-    super(`${path}: ${detail}`);
-    this.name = "WireContractError";
-    this.path = path;
-  }
-}
-
-/**
- * Check a value against one wire schema, raising where it broke.
- *
- * A message is checked against one definition per role, and a content
- * block against one per kind, so a violation inside one fails the whole
- * group and is reported against the block as a whole as well. The error
- * that says which value, and why, is the deepest one.
- *
- * @param validate - The validator for this value.
- * @param value - The value to check.
- * @throws {WireContractError} If the value violates the contract.
- */
-function checked(validate: ValidateFunction, value: unknown): void {
-  if (validate(value)) {
-    return;
-  }
-  // Ajv fills these in whenever validation fails; the cast says so.
-  const errors = validate.errors as ErrorObject[];
-  const deepest = errors.reduce((worst, error) =>
-    error.instancePath.length > worst.instancePath.length ? error : worst,
-  );
-  throw new WireContractError(
-    shownPath(deepest.instancePath),
-    deepest.message as string,
-  );
-}
-
-/**
- * Show an Ajv instance path as a path into the value.
- *
- * @param instancePath - The JSON Pointer Ajv reports (`/1/content/0`).
- * @returns The path as a caller would write it (`$[1].content[0]`).
- */
-function shownPath(instancePath: string): string {
-  return instancePath
-    .split("/")
-    .slice(1)
-    .reduce(
-      (shown, segment) =>
-        /^\d+$/.test(segment) ? `${shown}[${segment}]` : `${shown}.${segment}`,
-      "$",
-    );
-}
-
-// The payload shapes the schema has vouched for, as far as the decoding
-// below reads them. The format tokens are the SDK's own, which is what the
-// wire carries — except for 3GP, where the wire carries the Converse token
-// and the SDK's is shorter.
+// The inbound shapes, as far as the decoding below reads them. The format
+// tokens are the SDK's own, which is what the wire carries — except for
+// 3GP, where the wire carries the Converse token and the SDK's is shorter.
 type WireVideoFormat = Exclude<VideoFormat, "3gp"> | "three_gp";
 
 interface WireSource {
@@ -153,7 +62,8 @@ type WireBlock =
   | { document: { name: string; format: DocumentFormat; source: WireSource } }
   | { video: { format: WireVideoFormat; source: WireSource } };
 
-interface WireMessage {
+/** One Converse-shaped message of Welt's payload. */
+export interface WireMessage {
   role: "user" | "assistant";
   content: WireBlock[];
 }
@@ -164,25 +74,18 @@ interface WireMessage {
  * Strands consumes Welt's messages nearly as they are: the block shapes
  * match, but the image/document/video bytes arrive base64-encoded — JSON
  * cannot carry raw bytes — where the SDK holds a `Uint8Array`, and the
- * wire's `three_gp` video token is `3gp` in the SDK. This checks the
- * payload against Welt's published schema and rebuilds each message with
- * raw bytes and SDK format tokens. The result feeds `Agent.stream()`.
- *
- * A payload that departs from the wire contract throws: it is a bug on the
- * sending side, and decoding what is left of it would hand the agent a
- * conversation with a turn missing.
+ * wire's `three_gp` video token is `3gp` in the SDK. Each message is
+ * rebuilt with raw bytes and SDK format tokens. The result feeds
+ * `Agent.stream()`.
  *
  * @param messages - The `messages` value of Welt's payload.
  * @returns A decoded copy of the messages; the input is left untouched.
- * @throws {WireContractError} If the payload violates the wire contract.
- *   The error names the offending path.
- * @throws {DOMException} If a file block's bytes are not valid base64,
- *   which the schema annotates but does not assert.
+ * @throws {DOMException} If a file block's bytes are not valid base64.
  */
-export function decodeMessages(messages: unknown): MessageData[] {
-  checked(MESSAGES, messages);
-  // The schema has vouched for the shape; the cast tells the type checker.
-  return (messages as WireMessage[]).map(decodedMessage);
+export function decodeMessages(
+  messages: readonly WireMessage[],
+): MessageData[] {
+  return messages.map(decodedMessage);
 }
 
 function decodedMessage(message: WireMessage): MessageData {
@@ -216,9 +119,6 @@ function decodedBlock(block: WireBlock): ContentBlockData {
 /**
  * Decode one block's base64 bytes.
  *
- * Whether the string decodes is the one thing the schema annotates without
- * asserting, so this is where a payload that lied about it is found out.
- *
  * @param bytes - The base64 the payload carried.
  * @returns The raw bytes.
  * @throws {DOMException} If the string is not valid base64.
@@ -243,25 +143,16 @@ function decodedBytes(bytes: string): Uint8Array {
  * list of `interruptResponse` content items; the returned list feeds
  * `Agent.stream()` directly.
  *
- * A payload that departs from the wire contract throws: resuming a run
- * with an answer short is worse than not resuming it at all.
- *
  * @param responses - The `interrupt_responses` value of Welt's payload.
  * @returns One `interruptResponse` item per answered interrupt, in
  *   payload order.
- * @throws {WireContractError} If the payload violates the wire contract.
- *   The error names the offending path.
  */
 export function decodeInterruptResponses(
-  responses: unknown,
+  responses: Readonly<Record<string, string>>,
 ): InterruptResponseContentData[] {
-  checked(INTERRUPT_RESPONSES, responses);
-  // The schema has vouched for the shape; the cast tells the type checker.
-  return Object.entries(responses as Record<string, string>).map(
-    ([interruptId, response]) => ({
-      interruptResponse: { interruptId, response },
-    }),
-  );
+  return Object.entries(responses).map(([interruptId, response]) => ({
+    interruptResponse: { interruptId, response },
+  }));
 }
 
 /** A `file` wire event: a filename plus base64 bytes Welt uploads to Slack. */
@@ -269,47 +160,31 @@ export interface FileEvent {
   file: { name: string; bytes: string };
 }
 
-/**
- * Build a `file` wire event, which Welt uploads to the Slack thread.
- *
- * `renderableEvents` emits these for the files the model returns and the
- * files of the tools the agent names; this builds the same event from
- * arbitrary bytes, for the files the host app attaches itself.
- *
- * @param name - The upload filename, extension included.
- * @param data - The raw file bytes.
- * @returns The `file` event (name plus base64 bytes).
- * @throws {WireContractError} If the event would not be one Welt renders —
- *   a nameless file, which it drops.
- */
-export function fileEvent(name: string, data: Uint8Array): FileEvent {
-  const event = { file: { name, bytes: Buffer.from(data).toString("base64") } };
-  checked(FILE, event.file);
-  return event;
-}
-
 // Type aliases, not interfaces: an alias gets an implicit index
 // signature, so a reason fits the SDK's JSONValue as-is.
 
-/** A button of a structured interrupt reason. */
-export type InterruptOption = {
+/** One button of a structured interrupt reason. */
+export type OptionSpec = {
   value: string;
   label?: string;
   style?: "primary" | "danger";
 };
 
 /** The free-text field of a structured interrupt reason. */
-export type InterruptInput = {
+export type InputSpec = {
   label?: string;
   multiline?: boolean;
 };
 
 /** The structured interrupt reason shape Welt renders as widgets. */
-export type InterruptReason = {
+type InterruptReason = {
   message: string;
-  options?: InterruptOption[];
-  input?: InterruptInput;
+  options?: OptionSpec[];
+  input?: InputSpec;
 };
+
+const OPTION_KEYS = ["value", "label", "style"];
+const INPUT_KEYS = ["label", "multiline"];
 
 /**
  * Build an interrupt reason that Welt renders as the specified widgets.
@@ -318,39 +193,177 @@ export type InterruptReason = {
  * (`options`), a free-text field whose submitted text becomes the
  * interrupt's response (`input`), or both — whichever answer comes
  * first, a pressed button or the submitted text, settles the question.
- * Both widget specs are the wire's own shapes; building them through this
- * helper checks the result against Welt's published schema, so a typo
- * throws here instead of reaching the thread as Welt's default rendering —
- * which is what a reason it cannot match falls back to, silently.
+ *
+ * Building the reason through this helper is what makes a typo an error.
+ * `ToolContext.interrupt` takes its reason as `JSONValue`, so an object
+ * literal handed to it directly is checked for being JSON and nothing
+ * more, and Welt's reaction to a reason it cannot match is its default
+ * Approve / Deny buttons — no error, no log, just widgets the author did
+ * not ask for. The typed
+ * parameters here catch a misspelled key before the run, and the checks
+ * below catch it in the runs the types miss: TypeScript's excess-property
+ * check fires on an object literal written at the call site, and not on
+ * one that reached it through a variable.
+ *
+ * What is checked is the shape, not the size: Welt's own rendering caps
+ * (how many buttons one Slack block holds, how long a button value may
+ * be) are Welt's to enforce, and a copy of them here would be four copies
+ * to keep in step with a number only Welt knows.
  *
  * @param message - The text Welt shows above the widgets.
  * @param options - One entry per button: a required `value` (what the
  *   interrupting tool receives as the response when the button is
  *   pressed), an optional `label` (the button text; omitted, Welt shows
- *   the value), and an optional `style` ("primary" or "danger"). At most
- *   25, which is what one Slack actions block holds.
+ *   the value), and an optional `style` ("primary" or "danger").
  * @param input - The free-text field: an optional `label` (the field's
  *   label) and an optional `multiline` (whether the field accepts
  *   multiple lines) — `{}` takes Welt's defaults for both. Omitted, no
  *   field renders.
  * @returns The reason to pass to `ToolContext.interrupt`.
- * @throws {WireContractError} If the reason would not be one Welt renders
- *   as widgets.
+ * @throws {TypeError} If a value is of the wrong type.
+ * @throws {Error} If a key is unknown, a required string is empty, or the
+ *   reason specifies no widget at all.
  */
 export function interruptReason(
   message: string,
-  options?: readonly InterruptOption[],
-  input?: InterruptInput,
+  options?: readonly OptionSpec[],
+  input?: InputSpec,
 ): InterruptReason {
-  const reason: InterruptReason = { message };
+  if (options === undefined && input === undefined) {
+    throw new Error("a reason needs options, input, or both");
+  }
+  const reason: InterruptReason = { message: checkedMessage(message) };
   if (options !== undefined) {
-    reason.options = [...options];
+    reason.options = checkedOptions(options);
   }
   if (input !== undefined) {
-    reason.input = input;
+    reason.input = checkedInput(input);
   }
-  checked(STRUCTURED_REASON, reason);
   return reason;
+}
+
+/** Check a reason's message. */
+function checkedMessage(message: unknown): string {
+  if (typeof message !== "string") {
+    throw new TypeError(`message must be a string, not ${typeName(message)}`);
+  }
+  if (message.length === 0) {
+    throw new Error("message must not be empty");
+  }
+  return message;
+}
+
+/** Check a reason's options. */
+function checkedOptions(options: unknown): OptionSpec[] {
+  if (!Array.isArray(options)) {
+    throw new TypeError(`options must be an array, not ${typeName(options)}`);
+  }
+  if (options.length === 0) {
+    throw new Error("options must not be empty; omit it to show no buttons");
+  }
+  return options.map(checkedOption);
+}
+
+/** Check one option of a reason. */
+function checkedOption(option: unknown): OptionSpec {
+  if (!isRecord(option)) {
+    throw new TypeError(`an option must be an object, not ${typeName(option)}`);
+  }
+  refuseUnknownKeys(option, OPTION_KEYS, "an option");
+  const { value, label, style } = option;
+  if (value === undefined) {
+    throw new Error("an option needs a value");
+  }
+  if (typeof value !== "string") {
+    throw new TypeError(
+      `an option's value must be a string, not ${typeName(value)}`,
+    );
+  }
+  if (value.length === 0) {
+    throw new Error("an option's value must not be empty");
+  }
+  const checked: OptionSpec = { value };
+  if (label !== undefined) {
+    checked.label = checkedLabel(label, "an option's label");
+  }
+  if (style !== undefined) {
+    if (style !== "primary" && style !== "danger") {
+      throw new Error(`an option's style must be "primary" or "danger"`);
+    }
+    checked.style = style;
+  }
+  return checked;
+}
+
+/** Check a reason's free-text field. */
+function checkedInput(input: unknown): InputSpec {
+  if (!isRecord(input)) {
+    throw new TypeError(`input must be an object, not ${typeName(input)}`);
+  }
+  refuseUnknownKeys(input, INPUT_KEYS, "input");
+  const { label, multiline } = input;
+  const checked: InputSpec = {};
+  if (label !== undefined) {
+    checked.label = checkedLabel(label, "input's label");
+  }
+  if (multiline !== undefined) {
+    if (typeof multiline !== "boolean") {
+      throw new TypeError(
+        `input's multiline must be a boolean, not ${typeName(multiline)}`,
+      );
+    }
+    checked.multiline = multiline;
+  }
+  return checked;
+}
+
+/** Check a widget label, which Welt shows in place of nothing. */
+function checkedLabel(label: unknown, subject: string): string {
+  if (typeof label !== "string") {
+    throw new TypeError(`${subject} must be a string, not ${typeName(label)}`);
+  }
+  if (label.length === 0) {
+    throw new Error(`${subject} must not be empty`);
+  }
+  return label;
+}
+
+/**
+ * Refuse keys the wire contract does not name.
+ *
+ * A misspelled key is the mistake worth catching: Welt drops the whole
+ * reason to its default rendering rather than ignoring the stray key.
+ */
+function refuseUnknownKeys(
+  value: Record<string, unknown>,
+  allowed: readonly string[],
+  subject: string,
+): void {
+  const unknownKeys = Object.keys(value)
+    .filter((key) => !allowed.includes(key))
+    .sort();
+  if (unknownKeys.length > 0) {
+    throw new Error(
+      `${subject} carries unknown key(s): ${unknownKeys.join(", ")}` +
+        ` (known: ${allowed.join(", ")})`,
+    );
+  }
+}
+
+/** Name a value's type, for the error that refuses it. */
+function typeName(value: unknown): string {
+  if (value === null || value === undefined) {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return "an array";
+  }
+  const type = typeof value;
+  return type === "object" ? "an object" : `a ${type}`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /** A `data` wire event: one text chunk of the reply. */
@@ -404,6 +417,14 @@ export interface RenderableEventsOptions {
  * reason, the reason passed through unmodified since interpreting a
  * reason is the renderer's job). Everything else is dropped.
  *
+ * An event with nothing to render is dropped too: a text chunk the model
+ * left empty, a block whose file lives elsewhere — in S3, behind a URL, or
+ * as text of its own — rather than in bytes the block carries, and a file
+ * whose bytes are empty, which Slack refuses, failing the whole reply with
+ * it. The empty file leaves a process warning behind, naming what returned
+ * it; a block with no bytes to upload in the first place is nothing to
+ * report.
+ *
  * Which of the agent's files belong in the reply is the agent's call, so
  * a tool's files become `file` events only when the tool is named in
  * `filesFrom` — a tool that hands the model a file to read stays off the
@@ -448,7 +469,7 @@ export async function* renderableEvents(
         break;
       }
       case "modelMessageEvent": {
-        yield* fileEvents(event.message.content);
+        yield* fileEvents(event.message.content, "the model");
         break;
       }
       case "agentResultEvent": {
@@ -466,7 +487,7 @@ function modelStreamEvent(
   event: ModelStreamEvent,
 ): TextEvent | ToolUseEvent | null {
   if (event.type === "modelContentBlockDeltaEvent") {
-    // A delta the model left empty would be an event Welt cannot render.
+    // A delta the model left empty carries nothing to render.
     if (event.delta.type === "textDelta" && event.delta.text.length > 0) {
       return { data: event.delta.text };
     }
@@ -495,16 +516,17 @@ function toolResultEvents(
   if (name === undefined || !filesFrom.has(name)) {
     return events;
   }
-  events.push(...fileEvents(result.content));
+  events.push(...fileEvents(result.content, name));
   return events;
 }
 
 function fileEvents(
   blocks: readonly (ContentBlock | ToolResultContent)[],
+  origin: string,
 ): FileEvent[] {
   const events: FileEvent[] = [];
   for (const block of blocks) {
-    const event = blockFileEvent(block);
+    const event = blockFileEvent(block, origin);
     if (event !== null) {
       events.push(event);
     }
@@ -520,15 +542,18 @@ function fileEvents(
  * file either; the file lives elsewhere, so nothing goes to the thread.
  *
  * @param block - A block of an assistant message or a tool result.
+ * @param origin - What returned the block, for the warning an empty file
+ *   leaves behind.
  * @returns The `file` event, or null if the block carries no file bytes.
  */
 function blockFileEvent(
   block: ContentBlock | ToolResultContent,
+  origin: string,
 ): FileEvent | null {
   switch (block.type) {
     case "imageBlock": {
       return block.source.type === "imageSourceBytes"
-        ? fileEvent(`image.${block.format}`, block.source.bytes)
+        ? fileEvent(`image.${block.format}`, block.source.bytes, origin)
         : null;
     }
     case "documentBlock": {
@@ -537,18 +562,45 @@ function blockFileEvent(
       // drops a nameless file.
       const base = block.name.length > 0 ? block.name : "document";
       return block.source.type === "documentSourceBytes"
-        ? fileEvent(`${base}.${block.format}`, block.source.bytes)
+        ? fileEvent(`${base}.${block.format}`, block.source.bytes, origin)
         : null;
     }
     case "videoBlock": {
       return block.source.type === "videoSourceBytes"
-        ? fileEvent(`video.${block.format}`, block.source.bytes)
+        ? fileEvent(`video.${block.format}`, block.source.bytes, origin)
         : null;
     }
     default: {
       return null;
     }
   }
+}
+
+/**
+ * Build a `file` wire event, which Welt uploads to the Slack thread.
+ *
+ * @param name - The upload filename, extension included.
+ * @param data - The raw file bytes.
+ * @param origin - What returned the file, for the warning an empty one
+ *   leaves behind.
+ * @returns The `file` event (name plus base64 bytes), or null for a file
+ *   with no bytes.
+ */
+function fileEvent(
+  name: string,
+  data: Uint8Array,
+  origin: string,
+): FileEvent | null {
+  if (data.length === 0) {
+    // Slack refuses a zero-byte upload, and the whole reply fails with it,
+    // so an empty file does not go on the wire.
+    process.emitWarning(
+      `Skipped an empty file from ${origin}: ${name}`,
+      WARNING_TYPE,
+    );
+    return null;
+  }
+  return { file: { name, bytes: Buffer.from(data).toString("base64") } };
 }
 
 function interruptEvents(
