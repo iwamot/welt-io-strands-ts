@@ -11,9 +11,21 @@ importers:
 
   .:
     dependencies:
-      ajv:
-        specifier: 8.20.0
-        version: 8.20.0
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.25.2
+        version: 1.29.0(zod@4.4.3)
+      '@opentelemetry/api':
+        specifier: ^1.9.0
+        version: 1.9.1
+      '@smithy/types':
+        specifier: ^4.15.1
+        version: 4.16.1
+      express:
+        specifier: ^5.1.0
+        version: 5.2.1
+      zod:
+        specifier: ^4.1.12
+        version: 4.4.3
     devDependencies:
       '@strands-agents/sdk':
         specifier: 1.11.2
@@ -27,15 +39,27 @@ importers:
 
   examples/agent:
     dependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.25.2
+        version: 1.29.0(zod@4.4.3)
+      '@opentelemetry/api':
+        specifier: ^1.9.0
+        version: 1.9.1
+      '@smithy/types':
+        specifier: ^4.15.1
+        version: 4.16.1
       '@strands-agents/sdk':
         specifier: 1.11.2
         version: 1.11.2(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(@opentelemetry/api@1.9.1)(@smithy/types@4.16.1)(express@5.2.1)(zod@4.4.3)
       '@welt-io/strands':
         specifier: workspace:*
-        version: link:../..
+        version: 0.0.0
       bedrock-agentcore:
         specifier: 0.4.1
         version: 0.4.1(@strands-agents/sdk@1.11.2(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(@opentelemetry/api@1.9.1)(@smithy/types@4.16.1)(express@5.2.1)(zod@4.4.3))
+      express:
+        specifier: ^5.1.0
+        version: 5.2.1
       zod:
         specifier: 4.4.3
         version: 4.4.3
