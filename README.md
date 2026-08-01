@@ -17,6 +17,22 @@ npm install @welt-io/strands
 
 See [`examples/agent`](examples/agent) — the smallest complete agent built on this package (text streaming, tool use, file output, file input, and human-approval tools). The sections below explain the adapters it wires in.
 
+## Supported Versions
+
+### Welt
+
+Welt releases first; @welt-io/strands follows, mirroring the minor version. While both are 0.x, a @welt-io/strands 0.Y release supports Welt v0.Y — other combinations may work, but come with no guarantee.
+
+### Strands Agents
+
+| Package | Installable | Version CI runs against |
+|---|---|---|
+| `@strands-agents/sdk` | `>=1.2.0` | <!-- renovate: datasource=npm depName=@strands-agents/sdk --> `1.11.2` |
+
+Every push and pull request runs the suite at both ends of that range. That is best effort rather than a guarantee: the floor is where the suite was last seen to pass, so a later release may raise it, and no ceiling is declared at all.
+
+Something misbehaving inside that range is worth an [issue](https://github.com/iwamot/welt-io-strands-ts/issues).
+
 ## API
 
 The wire between Welt and the agent is JSON, specified by [Welt's wire contract](https://github.com/iwamot/welt/blob/main/docs/wire.md). Strands speaks nearly the same shapes, but not exactly, in either direction. Two functions adapt the inbound payload, two the outbound stream.
@@ -95,10 +111,6 @@ Building the reason through this helper is what makes a typo an error. `ToolCont
 
 - **Prefix your interrupt names** (`myapp-deploy-approval`) — names must stay unique as the agent grows, and a prefix keeps collisions out.
 - **Strands' ready-made [`HumanInTheLoop`](https://strandsagents.com/docs/user-guide/concepts/agents/interventions/human-in-the-loop/) intervention works over Welt as-is** (`import { HumanInTheLoop } from "@strands-agents/sdk/vended-interventions/hitl"`). Its string reasons render with Welt's default **Approve** / **Deny** buttons, whose `y` / `n` values its default evaluator understands. Do not pass `ask`: both of its inline modes block the agent waiting for input that Slack can never deliver — the default interrupt/resume mode is the one Welt drives.
-
-## Supported Versions
-
-Welt releases first; @welt-io/strands follows, mirroring the minor version. While both are 0.x, a @welt-io/strands 0.Y release supports Welt v0.Y — other combinations may work, but come with no guarantee.
 
 ## License
 
