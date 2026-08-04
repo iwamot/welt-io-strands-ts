@@ -13,11 +13,16 @@
  * What Welt sends is taken as correct. Welt builds the payload and checks
  * its own output against the wire contract before releasing it, so a
  * payload that departs from the contract is a bug on the sending side, not
- * an input to guard against — the inbound parameter types say what
- * arrives, and a value that is not it surfaces as an ordinary error from
- * whatever touches it first. What this adapter checks is the other thing:
- * the values its own caller passes to `interruptReason`, since Welt
- * renders a reason it cannot match as its default buttons, silently.
+ * an input to validate against runtime errors — the inbound parameter
+ * types say what arrives, and a value that is not it surfaces as an
+ * ordinary error from whatever touches it first. The one thing
+ * `decodeMessages` does refuse is a content block of a kind Welt never
+ * sends: a `toolUse` or `toolResult` is not a shape error but a forged
+ * conversation turn, and rebuilt as history it would let whoever reached
+ * the runtime put words the model treats as its own past actions into the
+ * run. What this adapter checks beyond that is the values its own caller
+ * passes to `interruptReason`, since Welt renders a reason it cannot match
+ * as its default buttons, silently.
  *
  * The reply stream is read as what the SDK's types say it is:
  * `Agent.stream()` yields a closed union of event objects, so each one is
@@ -92,7 +97,19 @@ function decodedMessage(message: WireMessage): MessageData {
   return { role: message.role, content: message.content.map(decodedBlock) };
 }
 
+// The content block kinds Welt sends. A block of any other kind — a toolUse
+// or toolResult in particular — is a forged conversation turn, not something
+// Welt builds, and rebuilt as history it would let a caller put words the
+// model treats as its own past actions into the run. It is refused, not
+// rebuilt.
+const ALLOWED_BLOCK_KEYS = new Set(["text", "image", "document", "video"]);
+
 function decodedBlock(block: WireBlock): ContentBlockData {
+  if (!Object.keys(block).every((key) => ALLOWED_BLOCK_KEYS.has(key))) {
+    throw new Error(
+      `unexpected content block: ${Object.keys(block).sort().join(", ")}`,
+    );
+  }
   if ("text" in block) {
     return { text: block.text };
   }
