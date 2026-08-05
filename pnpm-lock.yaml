@@ -13,22 +13,6 @@ overrides:
 importers:
 
   .:
-    dependencies:
-      '@modelcontextprotocol/sdk':
-        specifier: ^1.25.2
-        version: 1.29.0(zod@4.4.3)
-      '@opentelemetry/api':
-        specifier: ^1.9.0
-        version: 1.9.1
-      '@smithy/types':
-        specifier: ^4.15.1
-        version: 4.16.1
-      express:
-        specifier: ^5.1.0
-        version: 5.2.1
-      zod:
-        specifier: ^4.1.12
-        version: 4.4.3
     devDependencies:
       '@strands-agents/sdk':
         specifier: 1.11.2
@@ -42,27 +26,15 @@ importers:
 
   examples/agent:
     dependencies:
-      '@modelcontextprotocol/sdk':
-        specifier: ^1.25.2
-        version: 1.29.0(zod@4.4.3)
-      '@opentelemetry/api':
-        specifier: ^1.9.0
-        version: 1.9.1
-      '@smithy/types':
-        specifier: ^4.15.1
-        version: 4.16.1
       '@strands-agents/sdk':
         specifier: 1.11.2
         version: 1.11.2(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(@opentelemetry/api@1.9.1)(@smithy/types@4.16.1)(express@5.2.1)(zod@4.4.3)
       '@welt-io/strands':
         specifier: workspace:*
-        version: 0.0.0
+        version: link:../..
       bedrock-agentcore:
-        specifier: 0.4.1
-        version: 0.4.1(@strands-agents/sdk@1.11.2(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(@opentelemetry/api@1.9.1)(@smithy/types@4.16.1)(express@5.2.1)(zod@4.4.3))
-      express:
-        specifier: ^5.1.0
-        version: 5.2.1
+        specifier: 0.4.2
+        version: 0.4.2(@strands-agents/sdk@1.11.2(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(@opentelemetry/api@1.9.1)(@smithy/types@4.16.1)(express@5.2.1)(zod@4.4.3))
       zod:
         specifier: 4.4.3
         version: 4.4.3
@@ -104,6 +76,9 @@ packages:
   '@aws-sdk/core@3.977.1':
     resolution: {integrity: sha512-KVtQRtc00ES/y+Sc3vYXeP6pCIcNlBJCZOwvqSy8ZpVGmbM5+IG+AfhuTKQ2oXmIVqZJewaGMMpzPkywC6xg0w==}
     engines: {node: '>=20.0.0'}
+    deprecated: |-
+      Deprecated due to Document number parsing bug in JSON, see
+        https://github.com/aws/aws-sdk-js-v3/issues/8246. Newer version available.
 
   '@aws-sdk/credential-provider-cognito-identity@3.972.60':
     resolution: {integrity: sha512-16Fxa3veKIO6nHJr+vN76z3BkSU7725lzruc5S2SQSTUTbK4TXtmi8033WQljZj4k1+383UsMaNOHN6B76fK5A==}
@@ -225,7 +200,7 @@ packages:
     resolution: {integrity: sha512-bjD221KPLoJTWUwso1J6fGKiTXEUFedG/s0visavY4zakFPkeGURMRNly+FhBHs7T8Dz4qHaZIMX9ZoJHSJtKA==}
     engines: {node: '>=20'}
     peerDependencies:
-      hono: ^4
+      hono: '>=4.12.34'
 
   '@modelcontextprotocol/sdk@1.29.0':
     resolution: {integrity: sha512-zo37mZA9hJWpULgkRpowewez1y6ML5GsXJPY8FI0tBBCd77HEvza4jDqRKOXgHNn867PVGCyTdzqpz0izu5ZjQ==}
@@ -547,8 +522,8 @@ packages:
   avvio@9.3.0:
     resolution: {integrity: sha512-g2tQ7LE7oOSqDfwEm3M+ZCMTJc7KiZCdJ4UwyZJb5ckTKyYu50OYmvv0mCFXPuYXoM4zkSt8zM9XQ9KCvxA74A==}
 
-  bedrock-agentcore@0.4.1:
-    resolution: {integrity: sha512-6qpYTkt4/MWML12RnZeUtH/ELSYpXAht8SdpssdGHGpGEWDqMZ0d3O29GOgMNylgW2G8es6rq6HPjuV9xDmzpw==}
+  bedrock-agentcore@0.4.2:
+    resolution: {integrity: sha512-72gcLfDxik9Rv09HxQ/3WT5eerseif2XoJ5AOymws+FpmsuvxNUMYSnJJKb31fdwezzAFO8FpI9I9Hf7mgkXRA==}
     engines: {node: '>=20.0.0'}
     peerDependencies:
       '@strands-agents/sdk': '>=1.5.0'
@@ -1632,7 +1607,7 @@ snapshots:
       '@fastify/error': 4.2.0
       fastq: 1.20.1
 
-  bedrock-agentcore@0.4.1(@strands-agents/sdk@1.11.2(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(@opentelemetry/api@1.9.1)(@smithy/types@4.16.1)(express@5.2.1)(zod@4.4.3)):
+  bedrock-agentcore@0.4.2(@strands-agents/sdk@1.11.2(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(@opentelemetry/api@1.9.1)(@smithy/types@4.16.1)(express@5.2.1)(zod@4.4.3)):
     dependencies:
       '@aws-crypto/sha256-js': 5.2.0
       '@aws-sdk/client-bedrock-agentcore': 3.1095.0
