@@ -27,7 +27,7 @@ While both are 0.x, a @welt-io/strands 0.Y release supports Welt v0.Y. From 1.0 
 
 | Package | Installable | Version CI runs against |
 |---|---|---|
-| `@strands-agents/sdk` | `>=1.2.0` | <!-- renovate: datasource=npm depName=@strands-agents/sdk --> `1.11.2` |
+| `@strands-agents/sdk` | `>=1.2.0` | <!-- renovate: datasource=npm depName=@strands-agents/sdk --> `1.12.0` |
 
 Every push and pull request runs the suite at both ends of that range. That is best effort rather than a guarantee: the floor is where the suite was last seen to pass, so a later release may raise it, and no ceiling is declared at all.
 
