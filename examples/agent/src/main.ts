@@ -17,7 +17,11 @@ import { Buffer } from "node:buffer";
 import { randomUUID } from "node:crypto";
 import type { AgentStreamEvent } from "@strands-agents/sdk";
 import { Agent, tool } from "@strands-agents/sdk";
-import type { RenderableEvent, WireMessage } from "@welt-io/strands";
+import type {
+  InterruptAnswer,
+  RenderableEvent,
+  WireMessage,
+} from "@welt-io/strands";
 import {
   decodeInterruptResponses,
   decodeMessages,
@@ -86,17 +90,14 @@ const sampleDangerousAction = tool({
       name: "example-dangerous-action-approval",
       reason: interruptReason(
         `May I run this dangerous action? — ${input.action}`,
-        [
-          { value: "y", label: "Approve", style: "primary" },
-          { value: "n", label: "Cancel" },
-        ],
+        [{ value: "Approve", style: "primary" }, { value: "Cancel" }],
         { label: "Or type your answer" },
       ),
     });
-    if (answer === "y") {
+    if (answer === "Approve") {
       return `Ran: ${input.action}. (This example doesn't actually run anything.)`;
     }
-    if (answer === "n") {
+    if (answer === "Cancel") {
       return "The action was cancelled by the user.";
     }
     return `The action was not run. The user answered: ${answer}`;
@@ -148,15 +149,12 @@ const sampleDraftReport = tool({
       name: "example-draft-report-approval",
       reason: interruptReason(
         `May I publish this draft?\n\n\`\`\`\n${draft}\`\`\``,
-        [
-          { value: "y", label: "Publish", style: "primary" },
-          { value: "n", label: "Discard" },
-        ],
+        [{ value: "Publish", style: "primary" }, { value: "Discard" }],
         { label: "Or type your answer" },
       ),
     });
     drafts.delete(toolUseId);
-    if (answer === "y") {
+    if (answer === "Publish") {
       const name = documentName("report");
       return [
         {
@@ -175,7 +173,7 @@ const sampleDraftReport = tool({
         },
       ];
     }
-    if (answer === "n") {
+    if (answer === "Discard") {
       return "The user discarded the draft; nothing was published.";
     }
     return `The draft was not published. The user answered: ${answer}`;
@@ -251,7 +249,7 @@ async function* replies(
  */
 type WeltPayload =
   | { messages: WireMessage[] }
-  | { interrupt_responses: Record<string, string> };
+  | { interrupt_responses: Record<string, InterruptAnswer> };
 
 const app = new BedrockAgentCoreApp({
   invocationHandler: {
