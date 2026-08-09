@@ -153,23 +153,34 @@ function decodedBytes(bytes: string): Uint8Array {
   return decoded;
 }
 
+/** One answer of Welt's resume payload: what it was, and where from. */
+export interface InterruptAnswer {
+  value: JSONValue;
+  source: "option" | "input";
+}
+
 /**
  * Decode Welt's interrupt answers into Strands' resume input.
  *
  * Welt resumes an interrupted run with a payload mapping each interrupt
- * id to the answer a human chose in the thread. Strands resumes from a
- * list of `interruptResponse` content items; the returned list feeds
- * `Agent.stream()` directly.
+ * id to the answer a human chose in the thread and the widget it came
+ * from. Strands resumes from a list of `interruptResponse` content items;
+ * the returned list feeds `Agent.stream()` directly.
+ *
+ * The answer travels on as the value it was given, since what it means is
+ * for the interrupting tool to decide. The widget it came from is Welt's
+ * own vocabulary, and a tool that reads its own option values already
+ * knows which of them it declared.
  *
  * @param responses - The `interrupt_responses` value of Welt's payload.
  * @returns One `interruptResponse` item per answered interrupt, in
  *   payload order.
  */
 export function decodeInterruptResponses(
-  responses: Readonly<Record<string, JSONValue>>,
+  responses: Readonly<Record<string, InterruptAnswer>>,
 ): InterruptResponseContentData[] {
-  return Object.entries(responses).map(([interruptId, response]) => ({
-    interruptResponse: { interruptId, response },
+  return Object.entries(responses).map(([interruptId, answer]) => ({
+    interruptResponse: { interruptId, response: answer.value },
   }));
 }
 

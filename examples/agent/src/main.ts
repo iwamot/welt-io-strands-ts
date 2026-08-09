@@ -17,7 +17,11 @@ import { Buffer } from "node:buffer";
 import { randomUUID } from "node:crypto";
 import type { AgentStreamEvent } from "@strands-agents/sdk";
 import { Agent, tool } from "@strands-agents/sdk";
-import type { RenderableEvent, WireMessage } from "@welt-io/strands";
+import type {
+  InterruptAnswer,
+  RenderableEvent,
+  WireMessage,
+} from "@welt-io/strands";
 import {
   decodeInterruptResponses,
   decodeMessages,
@@ -245,7 +249,7 @@ async function* replies(
  */
 type WeltPayload =
   | { messages: WireMessage[] }
-  | { interrupt_responses: Record<string, string> };
+  | { interrupt_responses: Record<string, InterruptAnswer> };
 
 const app = new BedrockAgentCoreApp({
   invocationHandler: {

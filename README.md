@@ -50,7 +50,7 @@ const stream = agent.stream(decodeMessages(payload.messages));
 
 #### `decodeInterruptResponses(responses)`
 
-Turns Welt's resume payload — a mapping of interrupt id to the answer a human chose — into the `interruptResponse` content items Strands resumes from. The returned list feeds `Agent.stream()` on the interrupted `Agent` instance directly (see the [example agent](examples/agent) for how the host app keeps that instance around).
+Turns Welt's resume payload — a mapping of interrupt id to the answer a human chose and the widget it came from — into the `interruptResponse` content items Strands resumes from. The answer travels on as the value it was given; the widget it came from is Welt's vocabulary, and a tool that reads its own option values already knows which of them it declared. The returned list feeds `Agent.stream()` on the interrupted `Agent` instance directly (see the [example agent](examples/agent) for how the host app keeps that instance around).
 
 #### What arrives is taken as correct
 
