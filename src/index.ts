@@ -41,6 +41,7 @@ import type {
   ImageFormat,
   Interrupt,
   InterruptResponseContentData,
+  JSONValue,
   MessageData,
   ModelStreamEvent,
   ToolResultBlock,
@@ -165,7 +166,7 @@ function decodedBytes(bytes: string): Uint8Array {
  *   payload order.
  */
 export function decodeInterruptResponses(
-  responses: Readonly<Record<string, string>>,
+  responses: Readonly<Record<string, JSONValue>>,
 ): InterruptResponseContentData[] {
   return Object.entries(responses).map(([interruptId, response]) => ({
     interruptResponse: { interruptId, response },
@@ -182,7 +183,7 @@ export interface FileEvent {
 
 /** One button of a structured interrupt reason. */
 export type OptionSpec = {
-  value: string;
+  value: JSONValue;
   label?: string;
   style?: "primary" | "danger";
 };
@@ -210,6 +211,8 @@ const INPUT_KEYS = ["label", "multiline"];
  * (`options`), a free-text field whose submitted text becomes the
  * interrupt's response (`input`), or both — whichever answer comes
  * first, a pressed button or the submitted text, settles the question.
+ * With neither, the message renders as itself and Welt's default
+ * Approve / Deny buttons answer it.
  *
  * Building the reason through this helper is what makes a typo an error.
  * `ToolContext.interrupt` takes its reason as `JSONValue`, so an object
@@ -228,27 +231,24 @@ const INPUT_KEYS = ["label", "multiline"];
  * to keep in step with a number only Welt knows.
  *
  * @param message - The text Welt shows above the widgets.
- * @param options - One entry per button: a required `value` (what the
- *   interrupting tool receives as the response when the button is
- *   pressed), an optional `label` (the button text; omitted, Welt shows
- *   the value), and an optional `style` ("primary" or "danger").
+ * @param options - One entry per button: a required `value` (any JSON
+ *   value, which the interrupting tool receives as the response when the
+ *   button is pressed), an optional `label` (the button text; omitted,
+ *   Welt shows the value), and an optional `style` ("primary" or
+ *   "danger"). Omitted, no buttons render.
  * @param input - The free-text field: an optional `label` (the field's
  *   label) and an optional `multiline` (whether the field accepts
  *   multiple lines) — `{}` takes Welt's defaults for both. Omitted, no
  *   field renders.
  * @returns The reason to pass to `ToolContext.interrupt`.
  * @throws {TypeError} If a value is of the wrong type.
- * @throws {Error} If a key is unknown, a required string is empty, or the
- *   reason specifies no widget at all.
+ * @throws {Error} If a key is unknown or a required string is empty.
  */
 export function interruptReason(
   message: string,
   options?: readonly OptionSpec[],
   input?: InputSpec,
 ): InterruptReason {
-  if (options === undefined && input === undefined) {
-    throw new Error("a reason needs options, input, or both");
-  }
   const reason: InterruptReason = { message: checkedMessage(message) };
   if (options !== undefined) {
     reason.options = checkedOptions(options);
@@ -288,16 +288,16 @@ function checkedOption(option: unknown): OptionSpec {
   }
   refuseUnknownKeys(option, OPTION_KEYS, "an option");
   const { value, label, style } = option;
+  // An option's value is whatever JSON value the interrupting tool wants
+  // back, so nothing about it is a typo to catch beyond its being JSON at
+  // all — what a reason carries has to survive the wire.
   if (value === undefined) {
     throw new Error("an option needs a value");
   }
-  if (typeof value !== "string") {
+  if (!isJsonValue(value)) {
     throw new TypeError(
-      `an option's value must be a string, not ${typeName(value)}`,
+      `an option's value must be JSON, not ${typeName(value)}`,
     );
-  }
-  if (value.length === 0) {
-    throw new Error("an option's value must not be empty");
   }
   const checked: OptionSpec = { value };
   if (label !== undefined) {
@@ -381,6 +381,24 @@ function typeName(value: unknown): string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** Whether a value is one JSON can carry, nested values included. */
+function isJsonValue(value: unknown): value is JSONValue {
+  if (value === null) {
+    return true;
+  }
+  const kind = typeof value;
+  if (kind === "string" || kind === "number" || kind === "boolean") {
+    return true;
+  }
+  if (Array.isArray(value)) {
+    return value.every(isJsonValue);
+  }
+  if (isRecord(value)) {
+    return Object.values(value).every(isJsonValue);
+  }
+  return false;
 }
 
 /** A `data` wire event: one text chunk of the reply. */
