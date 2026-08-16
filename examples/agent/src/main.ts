@@ -86,18 +86,19 @@ const sampleDangerousAction = tool({
     if (context === undefined) {
       throw new Error("This tool needs its execution context to interrupt.");
     }
-    const answer = context.interrupt<string>({
+    const answer = context.interrupt<string | boolean>({
       name: "example-dangerous-action-approval",
-      reason: interruptReason(
-        `May I run this dangerous action? — ${input.action}`,
-        [{ value: "Approve", style: "primary" }, { value: "Cancel" }],
-        { label: "Or type your answer" },
-      ),
+      reason: interruptReason({
+        message: `May I run this dangerous action? — ${input.action}`,
+        approve: {},
+        reject: { label: "Cancel" },
+        input: { label: "Or type your answer" },
+      }),
     });
-    if (answer === "Approve") {
+    if (answer === true) {
       return `Ran: ${input.action}. (This example doesn't actually run anything.)`;
     }
-    if (answer === "Cancel") {
+    if (answer === false) {
       return "The action was cancelled by the user.";
     }
     return `The action was not run. The user answered: ${answer}`;
@@ -147,11 +148,11 @@ const sampleDraftReport = tool({
     const draft = draftedReport(toolUseId, input.topic);
     const answer = context.interrupt<string>({
       name: "example-draft-report-approval",
-      reason: interruptReason(
-        `May I publish this draft?\n\n\`\`\`\n${draft}\`\`\``,
-        [{ value: "Publish", style: "primary" }, { value: "Discard" }],
-        { label: "Or type your answer" },
-      ),
+      reason: interruptReason({
+        message: `May I publish this draft?\n\n\`\`\`\n${draft}\`\`\``,
+        options: [{ value: "Publish", style: "primary" }, { value: "Discard" }],
+        input: { label: "Or type your answer" },
+      }),
     });
     drafts.delete(toolUseId);
     if (answer === "Publish") {
