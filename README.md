@@ -88,30 +88,28 @@ Uploaded names come from the block — a document's own `name` plus its format, 
 
 Each event carries only what Welt reads — a `current_tool_use` is the name and id behind the indicator, a `tool_result` the id and status — so tool arguments and tool output stay off the wire. An event with nothing to render is not sent at all: a text chunk the model left empty, a block whose file lives elsewhere (in S3, behind a URL, or as text of its own) rather than in bytes the block carries, and a file whose bytes are empty, which Slack refuses and fails the whole reply with. The empty file leaves a [process warning](https://nodejs.org/api/process.html#event-warning) behind, naming what returned it.
 
-#### `interruptReason(message, options, input)`
+#### `interruptReason(spec)`
 
-Builds the structured reason Welt renders as a message with the specified widgets — choice buttons (`options`), a free-text field (`input`), or both. An option's `value` is any JSON value, and the pressed button answers with it as it was declared; with neither widget the message renders as itself and Welt's default **Approve** / **Deny** buttons answer it. The specs are [the wire's own shapes](https://github.com/iwamot/welt/blob/main/docs/wire.md#interrupt), typed as `OptionSpec` and `InputSpec`, and omitted fields keep Welt's defaults:
+Builds the structured reason Welt renders as a message with the specified widgets — the approve and reject buttons Welt words and values itself (`approve`, `reject`), choice buttons of your own (`options`), a free-text field (`input`), or any combination. `approve` and `reject` answer with `true` and `false`, so a question whose decision is approval asks for them by name instead of inventing values; `{}` takes Welt's wording, and a `label` or `style` overrides it. An option's `value` is any JSON value, and the pressed button answers with it as it was declared. With no widget at all the message renders as itself and Welt's default buttons answer it. The specs are [the wire's own shapes](https://github.com/iwamot/welt/blob/main/docs/wire.md#interrupt), typed as `ReasonSpec` over `DecisionSpec`, `OptionSpec`, and `InputSpec`, and omitted fields keep Welt's defaults:
 
 ```ts
-const answer = context.interrupt<string>({
+const answer = context.interrupt<boolean | string>({
   name: "prod-deploy-approval",
-  reason: interruptReason(
-    "Deploy to prod?",
-    [
-      { value: "Deploy", style: "primary" },
-      { value: "Cancel" },
-    ],
-    { label: "Or type your answer" },
-  ),
+  reason: interruptReason({
+    message: "Deploy to prod?",
+    approve: { label: "Deploy" },
+    reject: { label: "Cancel" },
+    input: { label: "Or type your answer" },
+  }),
 });
 ```
 
-Building the reason through this helper is what makes a typo an error. `ToolContext.interrupt` takes its reason as `JSONValue`, so an object literal handed to it directly is checked for being JSON and nothing more, and Welt's reaction to a reason it cannot match is its default **Approve** / **Deny** buttons — no error, no log, just widgets you did not ask for. The typed parameters catch a misspelled key before the run; the checks inside catch it in the runs the types miss, since TypeScript's excess-property check fires on an object literal written at the call site and not on one that reached it through a variable. A wrong type throws a `TypeError`, an unknown key or an empty required string an `Error`. What they check is the shape, not the size: how many buttons one Slack block holds, and how long a button value may be, are Welt's to enforce.
+Building the reason through this helper is what makes a typo an error. `ToolContext.interrupt` takes its reason as `JSONValue`, so an object literal handed to it directly is checked for being JSON and nothing more, and Welt's reaction to a reason it cannot match is its default buttons — no error, no log, just widgets you did not ask for. The typed parameters catch a misspelled key before the run; the checks inside catch it in the runs the types miss, since TypeScript's excess-property check fires on an object literal written at the call site and not on one that reached it through a variable. A wrong type throws a `TypeError`, an unknown key or an empty required string an `Error`. What they check is the shape, not the size: how many buttons one Slack block holds, and how long a button value may be, are Welt's to enforce.
 
 [Welt's Interrupts doc](https://github.com/iwamot/welt/blob/main/docs/interrupts.md) covers the Slack side: how each reason renders, who can answer, multiple questions, and expiry. On the Strands side:
 
 - **Prefix your interrupt names** (`myapp-deploy-approval`) — names must stay unique as the agent grows, and a prefix keeps collisions out.
-- **Strands' ready-made [`HumanInTheLoop`](https://strandsagents.com/docs/user-guide/concepts/agents/interventions/human-in-the-loop/) intervention works over Welt as-is** (`import { HumanInTheLoop } from "@strands-agents/sdk/vended-interventions/hitl"`). Its string reasons render with Welt's default **Approve** / **Deny** buttons, and its default evaluator reads the `true` they answer with as approval. Do not pass `ask`: both of its inline modes block the agent waiting for input that Slack can never deliver — the default interrupt/resume mode is the one Welt drives.
+- **Strands' ready-made [`HumanInTheLoop`](https://strandsagents.com/docs/user-guide/concepts/agents/interventions/human-in-the-loop/) intervention works over Welt as-is** (`import { HumanInTheLoop } from "@strands-agents/sdk/vended-interventions/hitl"`). Its string reasons render with Welt's default buttons, and its default evaluator reads the `true` they answer with as approval. Do not pass `ask`: both of its inline modes block the agent waiting for input that Slack can never deliver — the default interrupt/resume mode is the one Welt drives.
 
 ## License
 
