@@ -1,12 +1,13 @@
 /**
  * A small AgentCore agent that Welt can drive.
  *
- * Receives Welt's payload, feeds it to a Strands agent, and yields the
- * renderable subset of its `stream()` events — BedrockAgentCoreApp emits
- * each one as SSE, which Welt (https://github.com/iwamot/welt) renders
- * into Slack. The payload carries one of two envelopes: Converse-shaped
- * `messages` for a conversation turn, or `interrupt_responses` when a
- * human answered the approval buttons of an interrupted run.
+ * Receives Welt's payload, feeds it to a Strands agent, and streams back
+ * the renderable subset of its `stream()` events — BedrockAgentCoreApp
+ * emits each one as SSE, which Welt (https://github.com/iwamot/welt)
+ * renders into Slack. `weltAgent` is the whole connection: it reads which
+ * envelope Welt sent (a conversation turn, or the answers that resume an
+ * interrupted run), drives the agent, and keeps an interrupted run until
+ * its answers arrive.
  *
  * This example is a standalone deployable; Welt drives it only through
  * the JSON wire contract, which @welt-io/strands adapts in both
@@ -15,19 +16,9 @@
 
 import { Buffer } from "node:buffer";
 import { randomUUID } from "node:crypto";
-import type { AgentStreamEvent } from "@strands-agents/sdk";
 import { Agent, tool } from "@strands-agents/sdk";
-import type {
-  InterruptAnswer,
-  RenderableEvent,
-  WireMessage,
-} from "@welt-io/strands";
-import {
-  decodeInterruptResponses,
-  decodeMessages,
-  interruptReason,
-  renderableEvents,
-} from "@welt-io/strands";
+import { interruptReason } from "@welt-io/strands";
+import { weltAgent } from "@welt-io/strands/agentcore";
 import { BedrockAgentCoreApp } from "bedrock-agentcore/runtime";
 import { z } from "zod";
 
@@ -96,7 +87,7 @@ const sampleDangerousAction = tool({
       }),
     });
     if (answer === true) {
-      return `Ran: ${input.action}. (This example doesn't actually run anything.)`;
+      return `Ran: ${input.action}. Completed successfully (simulated by this demo tool).`;
     }
     if (answer === false) {
       return "The action was cancelled by the user.";
@@ -186,15 +177,6 @@ const sampleDraftReport = tool({
 // documents for the model would.
 const FILES_FROM = ["create_sample_file", "sample_draft_report"];
 
-// Where an interrupted Agent waits for its answers. One slot is enough:
-// AgentCore Runtime runs each session in its own microVM, so this process
-// never serves two sessions. Resume only: a normal turn always builds a
-// fresh Agent and streams from the messages Welt sends (the Slack thread
-// is the source of truth for conversation history, so the slot must not
-// stand in for it). No persistence either — the slot lives and dies with
-// the session's microVM (recycled on idle timeout, 8 hours at most).
-let interruptedAgent: Agent | null = null;
-
 function newAgent(): Agent {
   return new Agent({
     // Any Converse model; unset falls back to the Strands default.
@@ -211,73 +193,8 @@ function newAgent(): Agent {
   });
 }
 
-/**
- * Reduce one agent stream to wire events, re-stashing the agent whenever
- * the stream stops for human input so a resume that interrupts again
- * keeps working.
- *
- * Each event is wrapped as `{data: event}`: the AgentCore SDK treats a
- * yielded object's `data` field as the SSE data payload, so the wrapper
- * puts the wire event itself — text events included, whose own `data`
- * key would otherwise be mistaken for the envelope — on the `data:`
- * line.
- */
-async function* replies(
-  agent: Agent,
-  stream: AsyncIterable<AgentStreamEvent>,
-): AsyncGenerator<{ data: RenderableEvent }> {
-  let interrupted = false;
-  for await (const event of renderableEvents(stream, {
-    filesFrom: FILES_FROM,
-  })) {
-    if ("interrupt" in event) {
-      interrupted = true;
-    }
-    yield { data: event };
-  }
-  if (interrupted) {
-    interruptedAgent = agent;
-  }
-}
-
-/**
- * Welt's payload, which carries one of the two envelopes.
- *
- * What Welt sends is taken as correct: it checks its own output against
- * the wire contract before sending it, so this says what arrives rather
- * than checking it. A payload carrying neither key is Welt's bug, and the
- * error it raises is reported as an `error` event by the SDK.
- */
-type WeltPayload =
-  | { messages: WireMessage[] }
-  | { interrupt_responses: Record<string, InterruptAnswer> };
-
 const app = new BedrockAgentCoreApp({
-  invocationHandler: {
-    process: async function* (payload: unknown) {
-      const envelope = payload as WeltPayload;
-
-      if ("interrupt_responses" in envelope) {
-        const agent = interruptedAgent;
-        interruptedAgent = null;
-        if (agent === null) {
-          // The microVM was recycled while the buttons waited. The SDK
-          // reports the throw as an `error` event, and Welt renders its
-          // resume-failure notice.
-          throw new Error("No interrupted agent to resume in this session.");
-        }
-        const responses = decodeInterruptResponses(
-          envelope.interrupt_responses,
-        );
-        yield* replies(agent, agent.stream(responses));
-        return;
-      }
-
-      const messages = decodeMessages(envelope.messages);
-      const agent = newAgent();
-      yield* replies(agent, agent.stream(messages));
-    },
-  },
+  invocationHandler: weltAgent(newAgent, { filesFrom: FILES_FROM }),
 });
 
 app.run();
