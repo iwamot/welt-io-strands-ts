@@ -16,7 +16,21 @@ npm install @welt-io/strands
 
 ## Usage
 
-See [`examples/agent`](examples/agent) — the smallest complete agent built on this package (text streaming, tool use, file output, file input, and human-approval tools). The sections below explain the adapters it wires in.
+`weltAgent` builds the whole AgentCore Runtime invocation handler for an agent Welt drives, so a deployable is your agent plus one mount line:
+
+```ts
+import { Agent } from "@strands-agents/sdk";
+import { weltAgent } from "@welt-io/strands/agentcore";
+import { BedrockAgentCoreApp } from "bedrock-agentcore/runtime";
+
+const app = new BedrockAgentCoreApp({
+  invocationHandler: weltAgent(() => new Agent({ printer: false })),
+});
+
+app.run();
+```
+
+See [`examples/agent`](examples/agent) for the full version — the smallest complete agent built on this package (text streaming, tool use, file output, file input, and human-approval tools). The sections below cover the handler and the adapters it wires in.
 
 ## Supported Versions
 
@@ -34,7 +48,19 @@ Something misbehaving inside that range is worth an [issue](https://github.com/i
 
 ## API
 
-The wire between Welt and the agent is JSON, specified by [Welt's wire contract](https://github.com/iwamot/welt/blob/main/docs/wire.md). Strands speaks nearly the same shapes, but not exactly, in either direction. Two functions adapt the inbound payload, two the outbound stream.
+The wire between Welt and the agent is JSON, specified by [Welt's wire contract](https://github.com/iwamot/welt/blob/main/docs/wire.md). Strands speaks nearly the same shapes, but not exactly, in either direction. Two functions adapt the inbound payload, two the outbound stream. `weltAgent` wires the three of them the handler needs (`interruptReason` serves the tools themselves); reach for the pieces directly when your handler needs a shape of its own.
+
+### Handler
+
+#### `weltAgent(newAgent, { filesFrom })`
+
+Builds the invocation handler `BedrockAgentCoreApp` takes. It reads which envelope Welt sent — Converse-shaped `messages` for a conversation turn, `interrupt_responses` for the answers that resume an interrupted run — drives the agent, and yields the events Welt renders, each wrapped as the SSE frame the AgentCore Runtime SDK emits.
+
+Every turn runs on a fresh Agent from `newAgent`: the Slack thread is the source of truth for conversation history, and the messages Welt sends carry it whole. An interrupted Agent waits inside the handler for its answers — one slot, resume-only, living and dying with the session's microVM (recycled on idle timeout, 8 hours at most); resuming after that throws, which Welt renders as its resume-failure notice. `filesFrom` passes through to `renderableEvents` below.
+
+#### `sendFile(name, data)`
+
+Queues one file for the Slack thread from inside a tool, riding the wire beside the reply being streamed. The model never sees it — a tool whose file matters to the conversation says what it holds in its result, or returns it as a content block and is named in `filesFrom`, which puts it in front of the model and on the thread both. Every turn starts with the queue empty, so a file a failed turn left behind never rides a later reply, and an empty name or empty bytes is refused where the tool is still on the stack — Slack refuses a zero-byte upload, and the whole reply fails with it.
 
 ### Inbound
 
@@ -49,11 +75,11 @@ const stream = agent.stream(decodeMessages(payload.messages));
 
 #### `decodeInterruptResponses(responses)`
 
-Turns Welt's resume payload — a mapping of interrupt id to the answer a human chose and the widget it came from — into the `interruptResponse` content items Strands resumes from. The answer travels on as the value it was given; the widget it came from is Welt's vocabulary, and a tool that reads its own option values already knows which of them it declared. The returned list feeds `Agent.stream()` on the interrupted `Agent` instance directly (see the [example agent](examples/agent) for how the host app keeps that instance around).
+Turns Welt's resume payload — a mapping of interrupt id to the answer a human chose and the widget it came from — into the `interruptResponse` content items Strands resumes from. The answer travels on as the value it was given; the widget it came from is Welt's vocabulary, and a tool that reads its own option values already knows which of them it declared. The returned list feeds `Agent.stream()` on the interrupted `Agent` instance directly — `weltAgent` keeps that instance around for you, and a handler of your own does the same.
 
 #### What arrives is taken as correct
 
-Welt builds the payload and checks its own output against the wire contract before releasing it, so these two functions do no field validation of their own. Their parameter types — `WireMessage[]` and `Record<string, string>` — say what arrives, and the host app asserts the payload is Welt's where it enters (see the [example agent](examples/agent)). A payload that departs from the contract is a bug on the sending side rather than an input to guard against, and it surfaces as an ordinary error from whatever touches it first — `decodeMessages` decodes the file bytes, so bytes that are not base64 throw a `DOMException` there.
+Welt builds the payload and checks its own output against the wire contract before releasing it, so these two functions do no field validation of their own. Their parameter types — `WireMessage[]` and `Record<string, string>` — say what arrives, and the payload is asserted to be Welt's where it enters — `weltAgent` does this at its door, and a handler of your own does the same. A payload that departs from the contract is a bug on the sending side rather than an input to guard against, and it surfaces as an ordinary error from whatever touches it first — `decodeMessages` decodes the file bytes, so bytes that are not base64 throw a `DOMException` there.
 
 The one thing `decodeMessages` refuses outright is a content block of a kind Welt never sends. A `messages` turn carries only `text`, `image`, `document`, and `video` blocks; a `toolUse` or `toolResult` block is not a malformed one of those but a forged conversation turn, and rebuilt into history it would let a caller that is not Welt put words the model treats as its own past tool calls and their results into the run. It throws an `Error`. This is a trust-boundary check, not the field validation the contract otherwise saves you from.
 
