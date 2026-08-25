@@ -23,9 +23,9 @@ npm install @welt-io/strands @strands-agents/sdk zod bedrock-agentcore
 MODEL_ID=global.anthropic.claude-sonnet-4-6 node main.ts
 ```
 
-The process needs AWS credentials and a region the standard SDK way — environment variables, `AWS_PROFILE`, an SSO session — because the model runs on Amazon Bedrock. `MODEL_ID` takes any Converse model with access enabled in the Amazon Bedrock console; unset, the agent falls back to the Strands default (currently Anthropic Claude Sonnet 4.6 through Bedrock's global inference profile, the same id as above) — enable access for it, or point `MODEL_ID` elsewhere.
+The process needs AWS credentials and a region the standard SDK way — environment variables, `AWS_PROFILE`, an SSO session — because the model runs on Amazon Bedrock. `MODEL_ID` takes any Converse model with access enabled in the Amazon Bedrock console; unset, the agent uses `global.anthropic.claude-sonnet-4-6`, the same id as above — enable access for it, or point `MODEL_ID` elsewhere.
 
-One difference from the cloud: AgentCore Runtime gives every session its own microVM, while the local server is a single process for all sessions — the agent stashes an interrupted run in one slot, so keep interrupt experiments to one thread at a time.
+One difference from the cloud: AgentCore Runtime gives every session its own microVM, while the local server is a single process for all sessions — the interrupted agents this example keeps all share that one process, outlive the session that raised them, and accumulate while unanswered until the process exits.
 
 ## Deploy
 

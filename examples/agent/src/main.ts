@@ -4,10 +4,10 @@
  * Receives Welt's payload, feeds it to a Strands agent, and streams back
  * the renderable subset of its `stream()` events — BedrockAgentCoreApp
  * emits each one as SSE, which Welt (https://github.com/iwamot/welt)
- * renders into Slack. `weltAgent` is the whole connection: it reads which
+ * renders into Slack. `startReply` reads which
  * envelope Welt sent (a conversation turn, or the answers that resume an
- * interrupted run), drives the agent, and keeps an interrupted run until
- * its answers arrive.
+ * interrupted run) and drives the agent; the `interrupted` map below
+ * keeps each interrupted run until its answers arrive.
  *
  * This example is a standalone deployable; Welt drives it only through
  * the JSON wire contract, which @welt-io/strands adapts in both
@@ -17,8 +17,11 @@
 import { Buffer } from "node:buffer";
 import { randomUUID } from "node:crypto";
 import { Agent, tool } from "@strands-agents/sdk";
-import { interruptReason } from "@welt-io/strands";
-import { weltAgent } from "@welt-io/strands/agentcore";
+import {
+  interruptReason,
+  renderableEvents,
+  startReply,
+} from "@welt-io/strands";
 import { BedrockAgentCoreApp } from "bedrock-agentcore/runtime";
 import { z } from "zod";
 
@@ -179,10 +182,9 @@ const FILES_FROM = ["create_sample_file", "sample_draft_report"];
 
 function newAgent(): Agent {
   return new Agent({
-    // Any Converse model; unset falls back to the Strands default.
-    // `||`, not `??`: an empty MODEL_ID means unset, like Welt's own
-    // variables.
-    ...(process.env.MODEL_ID ? { model: process.env.MODEL_ID } : {}),
+    // Any Converse model. `||`, not `??`: an empty MODEL_ID means unset,
+    // like Welt's own variables.
+    model: process.env.MODEL_ID || "global.anthropic.claude-sonnet-4-6",
     tools: [
       currentTime,
       createSampleFile,
@@ -193,8 +195,60 @@ function newAgent(): Agent {
   });
 }
 
+// The Agents whose runs stopped for human input, under the ids of the
+// interrupts they raised — Welt sends those ids back when the buttons are
+// answered. An entry lives as long as this process: AgentCore Runtime
+// gives each session its own microVM, so a resume that arrives after it
+// was recycled finds nothing and throws, which Welt renders as its
+// resume-failure notice.
+const interrupted = new Map<string, Agent>();
+
+/**
+ * Take the Agent the answered interrupts belong to.
+ *
+ * A stop's questions are answered together, so every id in one payload
+ * names the same run: the first answered id that still holds an Agent
+ * names it. The whole stop leaves the map with it — every id holding
+ * that Agent is deleted, not just the ones the payload answered.
+ */
+function takeInterrupted(answers: Record<string, unknown>): Agent {
+  const agent = Object.keys(answers)
+    .map((id) => interrupted.get(id))
+    .find((held) => held !== undefined);
+  if (agent === undefined) {
+    throw new Error("No interrupted agent to resume in this session.");
+  }
+  for (const [id, held] of interrupted) {
+    if (held === agent) {
+      interrupted.delete(id);
+    }
+  }
+  return agent;
+}
+
 const app = new BedrockAgentCoreApp({
-  invocationHandler: weltAgent(newAgent, { filesFrom: FILES_FROM }),
+  invocationHandler: {
+    async *process(payload: unknown) {
+      const envelope = payload as {
+        interrupt_responses?: Record<string, unknown>;
+      };
+      const answers = envelope.interrupt_responses;
+      const agent =
+        answers === undefined ? newAgent() : takeInterrupted(answers);
+
+      for await (const event of renderableEvents(startReply(agent, payload), {
+        filesFrom: FILES_FROM,
+      })) {
+        if ("interrupt" in event) {
+          // The run stopped here; this Agent is what resumes it.
+          interrupted.set(event.interrupt.id, agent);
+        }
+        // The AgentCore Runtime SDK puts a yielded object's `data` field
+        // on the SSE `data:` line.
+        yield { data: event };
+      }
+    },
+  },
 });
 
 app.run();
