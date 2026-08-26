@@ -709,3 +709,70 @@ function interruptEvents(
     interrupt: { id, name, reason },
   }));
 }
+
+/** What the handler streams an agent on: one envelope's decoded input. */
+type AgentInput =
+  | ReturnType<typeof decodeMessages>
+  | ReturnType<typeof decodeInterruptResponses>;
+
+/**
+ * What `startReply` streams: the Agent's streaming face.
+ *
+ * Importing the SDK to name the Agent would say what one method already
+ * says. This names it instead, and an Agent satisfies it. The `never[]`
+ * rest makes room for the parameters the SDK's own signature takes
+ * beyond what the handler passes.
+ */
+export interface StreamingAgent {
+  stream(input: AgentInput, ...rest: never[]): AsyncIterable<AgentStreamEvent>;
+}
+
+/**
+ * Welt's payload, which carries one of the two envelopes.
+ *
+ * What Welt sends is taken as correct: it checks its own output against
+ * the wire contract before sending it, so this says what arrives rather
+ * than checking it. A payload carrying neither key is Welt's bug, and the
+ * error it raises is reported as an `error` event by the SDK.
+ */
+type WeltPayload =
+  | { messages: WireMessage[] }
+  | { interrupt_responses: Record<string, InterruptAnswer> };
+
+/**
+ * Start the stream that replies to the payload Welt sent.
+ *
+ * ```ts
+ * for await (const event of renderableEvents(startReply(agent, payload))) {
+ *   yield { data: event };
+ * }
+ * ```
+ *
+ * It reads which envelope Welt sent — Converse-shaped `messages` for a
+ * conversation turn, `interrupt_responses` for the answers that resume an
+ * interrupted run — decodes it, and streams the Agent it was given on the
+ * result. What comes back is the agent's raw stream, for
+ * `renderableEvents` to reduce.
+ *
+ * Which Agent that is stays with the caller, and so does whatever it
+ * takes to answer that question. A conversation turn runs on a fresh
+ * Agent, because the Slack thread is the source of truth for conversation
+ * history and the messages Welt sends carry it whole; a resume runs on
+ * the Agent that raised the interrupt, which the caller kept — under the
+ * interrupt ids Welt sends back, or however else suits the agent. Nothing
+ * is held here.
+ *
+ * @param agent - The Agent to stream this reply on.
+ * @param payload - Welt's invocation payload.
+ * @returns The agent's raw stream, for `renderableEvents` to reduce.
+ */
+export function startReply(
+  agent: StreamingAgent,
+  payload: unknown,
+): AsyncIterable<AgentStreamEvent> {
+  const envelope = payload as WeltPayload;
+  if ("interrupt_responses" in envelope) {
+    return agent.stream(decodeInterruptResponses(envelope.interrupt_responses));
+  }
+  return agent.stream(decodeMessages(envelope.messages));
+}
