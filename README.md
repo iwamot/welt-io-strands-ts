@@ -139,8 +139,8 @@ Building the reason through this helper is what makes a typo an error. `ToolCont
 
 [Welt's Interrupts doc](https://github.com/iwamot/welt/blob/main/docs/interrupts.md) covers the Slack side: how each reason renders, who can answer, multiple questions, and expiry. On the Strands side:
 
-- **Prefix your interrupt names** (`myapp-deploy-approval`) — names must stay unique as the agent grows, and a prefix keeps collisions out.
-- **Strands' ready-made [`HumanInTheLoop`](https://strandsagents.com/docs/user-guide/concepts/agents/interventions/human-in-the-loop/) intervention works over Welt as-is** (`import { HumanInTheLoop } from "@strands-agents/sdk/vended-interventions/hitl"`). Its string reasons render with Welt's default buttons, and its default evaluator reads the `true` they answer with as approval. Do not pass `ask`: both of its inline modes block the agent waiting for input that Slack can never deliver — the default interrupt/resume mode is the one Welt drives.
+- **Prefix your interrupt names** (`myapp-deploy-approval`). An interrupt id is the name joined to the scope it was raised in, and the scopes differ: a tool's own `interrupt()` and a `BeforeToolCallEvent` hook are both scoped to the tool call, while a `BeforeToolsEvent` hook is scoped to the whole event. A prefix keeps names apart whichever scope they land in, as the agent grows.
+- **Strands' ready-made [`HumanInTheLoop`](https://strandsagents.com/docs/user-guide/concepts/agents/interventions/human-in-the-loop/) intervention works over Welt as-is** (`import { HumanInTheLoop } from "@strands-agents/sdk/vended-interventions/hitl"`). Its string reasons render with Welt's default buttons, and its default evaluator reads the `true` they answer with as approval. Leave `ask` unset: setting it — to `"stdio"` or to a callback of your own — switches the intervention to collecting the answer inline, blocking the run until it returns, while Welt delivers an answer in a later invocation. The default interrupt/resume mode is the one Welt drives.
 
 ## License
 
