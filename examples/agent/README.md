@@ -37,12 +37,15 @@ cd WeltExample
 agentcore add agent --name WeltExample --type create --build CodeZip --language TypeScript --framework Strands --model-provider Bedrock --memory none
 
 curl -o app/WeltExample/main.ts https://raw.githubusercontent.com/iwamot/welt-io-strands-ts/main/examples/agent/src/main.ts
-npm --prefix app/WeltExample install @welt-io/strands zod
+# @strands-agents/sdk's context-offloader imports @aws-sdk/client-s3, which the CodeZip bundle does not mark external
+npm --prefix app/WeltExample install @welt-io/strands zod @aws-sdk/client-s3
 
 agentcore deploy
 ```
 
-Note the agent runtime ARN from the deploy output: Welt's `AGENT_ARN` points at it.
+`agentcore status` reports the agent runtime ARN: Welt's `AGENT_ARN` points at it.
+
+The CLI has no teardown command — removing the deployment means deleting the CloudFormation stack it created, `AgentCore-WeltExample-default`.
 
 ## Tools
 
