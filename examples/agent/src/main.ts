@@ -16,7 +16,7 @@
 
 import { Buffer } from "node:buffer";
 import { randomUUID } from "node:crypto";
-import { Agent, tool } from "@strands-agents/sdk";
+import { Agent, BedrockModel, tool } from "@strands-agents/sdk";
 import {
   interruptReason,
   renderableEvents,
@@ -24,6 +24,17 @@ import {
 } from "@welt-io/strands";
 import { BedrockAgentCoreApp } from "bedrock-agentcore/runtime";
 import { z } from "zod";
+
+// The model is the one place that decides which Bedrock endpoint, API, and
+// region the agent talks to; nothing else in this file depends on that
+// choice. BedrockModel speaks Converse to bedrock-runtime, so MODEL_ID takes
+// any Converse model there. BEDROCK_REGION sends the model calls to a region
+// of their own; unset, they go where the AWS SDK resolves one. `||`, not
+// `??`: an empty value means unset, like Welt's own variables.
+const model = new BedrockModel({
+  modelId: process.env.MODEL_ID || "global.anthropic.claude-sonnet-4-6",
+  ...(process.env.BEDROCK_REGION ? { region: process.env.BEDROCK_REGION } : {}),
+});
 
 const currentTime = tool({
   name: "current_time",
@@ -182,9 +193,7 @@ const FILES_FROM = ["create_sample_file", "sample_draft_report"];
 
 function newAgent(): Agent {
   return new Agent({
-    // Any Converse model. `||`, not `??`: an empty MODEL_ID means unset,
-    // like Welt's own variables.
-    model: process.env.MODEL_ID || "global.anthropic.claude-sonnet-4-6",
+    model,
     tools: [
       currentTime,
       createSampleFile,

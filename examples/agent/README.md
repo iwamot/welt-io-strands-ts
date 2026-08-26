@@ -20,10 +20,14 @@ Fetch the agent and run it with Node.js 24, which runs TypeScript directly:
 curl -O https://raw.githubusercontent.com/iwamot/welt-io-strands-ts/main/examples/agent/src/main.ts
 echo '{"type":"module"}' > package.json
 npm install @welt-io/strands @strands-agents/sdk zod bedrock-agentcore
-MODEL_ID=global.anthropic.claude-sonnet-4-6 node main.ts
+node main.ts
 ```
 
-The process needs AWS credentials and a region the standard SDK way — environment variables, `AWS_PROFILE`, an SSO session — because the model runs on Amazon Bedrock. `MODEL_ID` takes any Converse model with access enabled in the Amazon Bedrock console; unset, the agent uses `global.anthropic.claude-sonnet-4-6`, the same id as above — enable access for it, or point `MODEL_ID` elsewhere.
+The process needs AWS credentials the standard SDK way — environment variables, `AWS_PROFILE`, an SSO session — because the model runs on Amazon Bedrock.
+
+`MODEL_ID` takes any Converse model with access enabled in the Amazon Bedrock console; unset, the agent uses `global.anthropic.claude-sonnet-4-6`. The model is built in one place near the top of `main.ts`: `BedrockModel`, which speaks Converse to bedrock-runtime.
+
+`BEDROCK_REGION` sends the model calls to a region of their own — useful locally, when the model access you want is not where your credentials point. Unset, `BedrockModel` resolves one the AWS SDK for JavaScript way: `AWS_REGION`, then the profile's own `region`, then `us-west-2` when neither names one. `AWS_DEFAULT_REGION` is not read — the JavaScript SDK differs from boto3 here.
 
 One difference from the cloud: AgentCore Runtime gives every session its own microVM, while the local server is a single process for all sessions — the interrupted agents this example keeps all share that one process, outlive the session that raised them, and accumulate while unanswered until the process exits.
 
@@ -43,7 +47,7 @@ npm --prefix app/WeltExample install @welt-io/strands zod @aws-sdk/client-s3
 agentcore deploy
 ```
 
-`agentcore status` reports the agent runtime ARN: Welt's `AGENT_ARN` points at it.
+The agent uses `global.anthropic.claude-sonnet-4-6`, so enable access for it in the Amazon Bedrock console, in the region you deployed to, or point the `MODEL_ID` environment variable at another Converse model — and `BEDROCK_REGION` at another region, to leave the model access where it already is. `agentcore status` reports the agent runtime ARN: Welt's `AGENT_ARN` points at it.
 
 The CLI has no teardown command — removing the deployment means deleting the CloudFormation stack it created, `AgentCore-WeltExample-default`.
 
