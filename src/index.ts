@@ -37,8 +37,6 @@ import type {
   AgentStreamEvent,
   ContentBlock,
   ContentBlockData,
-  DocumentFormat,
-  ImageFormat,
   Interrupt,
   InterruptResponseContentData,
   JSONValue,
@@ -46,17 +44,40 @@ import type {
   ModelStreamEvent,
   ToolResultBlock,
   ToolResultContent,
-  VideoFormat,
 } from "@strands-agents/sdk";
 
 // The `type` of the warnings this package emits, which a
 // `process.on("warning", ...)` listener reads as the warning's `name`.
 const WARNING_TYPE = "WeltWarning";
 
-// The inbound shapes, as far as the decoding below reads them. The format
-// tokens are the SDK's own, which is what the wire carries — except for
-// 3GP, where the wire carries the Converse token and the SDK's is shorter.
-type WireVideoFormat = Exclude<VideoFormat, "3gp"> | "three_gp";
+// The inbound shapes, as far as the decoding below reads them. These are
+// Converse's format tokens, which is what the wire carries — a different
+// vocabulary from the SDK's, not a subset of it: the SDK is wider (`jpg`,
+// `json` and `xml` are its own) and spells 3GP `3gp` where Converse spells
+// it `three_gp`.
+type WireImageFormat = "gif" | "jpeg" | "png" | "webp";
+
+type WireDocumentFormat =
+  | "csv"
+  | "doc"
+  | "docx"
+  | "html"
+  | "md"
+  | "pdf"
+  | "txt"
+  | "xls"
+  | "xlsx";
+
+type WireVideoFormat =
+  | "flv"
+  | "mkv"
+  | "mov"
+  | "mp4"
+  | "mpeg"
+  | "mpg"
+  | "three_gp"
+  | "webm"
+  | "wmv";
 
 interface WireSource {
   bytes: string;
@@ -64,8 +85,14 @@ interface WireSource {
 
 type WireBlock =
   | { text: string }
-  | { image: { format: ImageFormat; source: WireSource } }
-  | { document: { name: string; format: DocumentFormat; source: WireSource } }
+  | { image: { format: WireImageFormat; source: WireSource } }
+  | {
+      document: {
+        name: string;
+        format: WireDocumentFormat;
+        source: WireSource;
+      };
+    }
   | { video: { format: WireVideoFormat; source: WireSource } };
 
 /** One Converse-shaped message of Welt's payload. */
