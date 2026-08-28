@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@strands-agents/sdk": "1.14.0",
+    "@strands-agents/sdk": "1.15.0",
     "@welt-io/strands": "workspace:*",
     "bedrock-agentcore": "0.4.3",
     "zod": "4.4.3"
