@@ -14,7 +14,7 @@ importers:
     devDependencies:
       '@strands-agents/sdk':
         specifier: 1.15.0
-        version: 1.15.0(@modelcontextprotocol/sdk@1.29.0(zod@4.5.1))(@opentelemetry/api@1.9.1)(@smithy/types@4.17.2)(express@5.2.1)(zod@4.5.1)
+        version: 1.15.0(@modelcontextprotocol/sdk@1.29.0(zod@4.5.2))(@opentelemetry/api@1.9.1)(@smithy/types@4.17.2)(express@5.2.1)(zod@4.5.2)
       '@types/node':
         specifier: 24.13.3
         version: 24.13.3
@@ -26,16 +26,16 @@ importers:
     dependencies:
       '@strands-agents/sdk':
         specifier: 1.15.0
-        version: 1.15.0(@modelcontextprotocol/sdk@1.29.0(zod@4.5.1))(@opentelemetry/api@1.9.1)(@smithy/types@4.17.2)(express@5.2.1)(zod@4.5.1)
+        version: 1.15.0(@modelcontextprotocol/sdk@1.29.0(zod@4.5.2))(@opentelemetry/api@1.9.1)(@smithy/types@4.17.2)(express@5.2.1)(zod@4.5.2)
       '@welt-io/strands':
         specifier: workspace:*
         version: link:../..
       bedrock-agentcore:
         specifier: 0.4.3
-        version: 0.4.3(@strands-agents/sdk@1.15.0(@modelcontextprotocol/sdk@1.29.0(zod@4.5.1))(@opentelemetry/api@1.9.1)(@smithy/types@4.17.2)(express@5.2.1)(zod@4.5.1))
+        version: 0.4.3(@strands-agents/sdk@1.15.0(@modelcontextprotocol/sdk@1.29.0(zod@4.5.2))(@opentelemetry/api@1.9.1)(@smithy/types@4.17.2)(express@5.2.1)(zod@4.5.2))
       zod:
-        specifier: 4.5.1
-        version: 4.5.1
+        specifier: 4.5.2
+        version: 4.5.2
     devDependencies:
       '@types/node':
         specifier: 24.13.3
@@ -1143,8 +1143,8 @@ packages:
     peerDependencies:
       zod: ^3.25.28 || ^4
 
-  zod@4.5.1:
-    resolution: {integrity: sha512-P3GqeAEOEDqKvafVGLezbg+39YW/ze4xrD4qdS0adOY8eoI3zfjv1PQM4UwQzgT8mZKXEbqtVt8K+ZKGqkMFKg==}
+  zod@4.5.2:
+    resolution: {integrity: sha512-XkYXCol10+ba/6F/cueWV+TezUeOqXW0hdeJt5CdXjTYeAgAQg5N03RQdJ80mhfFE72+pblvYMW4wy2Qp4Qbrg==}
 
 snapshots:
 
@@ -1590,7 +1590,7 @@ snapshots:
     dependencies:
       hono: 4.12.34
 
-  '@modelcontextprotocol/sdk@1.29.0(zod@4.5.1)':
+  '@modelcontextprotocol/sdk@1.29.0(zod@4.5.2)':
     dependencies:
       '@hono/node-server': 2.0.11(hono@4.12.34)
       ajv: 8.20.0
@@ -1607,8 +1607,8 @@ snapshots:
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
-      zod: 4.5.1
-      zod-to-json-schema: 3.25.2(zod@4.5.1)
+      zod: 4.5.2
+      zod-to-json-schema: 3.25.2(zod@4.5.2)
     transitivePeerDependencies:
       - supports-color
 
@@ -1764,16 +1764,16 @@ snapshots:
       '@smithy/core': 3.30.0
       tslib: 2.8.1
 
-  '@strands-agents/sdk@1.15.0(@modelcontextprotocol/sdk@1.29.0(zod@4.5.1))(@opentelemetry/api@1.9.1)(@smithy/types@4.17.2)(express@5.2.1)(zod@4.5.1)':
+  '@strands-agents/sdk@1.15.0(@modelcontextprotocol/sdk@1.29.0(zod@4.5.2))(@opentelemetry/api@1.9.1)(@smithy/types@4.17.2)(express@5.2.1)(zod@4.5.2)':
     dependencies:
       '@aws-sdk/client-bedrock-runtime': 3.1115.0
-      '@modelcontextprotocol/sdk': 1.29.0(zod@4.5.1)
+      '@modelcontextprotocol/sdk': 1.29.0(zod@4.5.2)
       '@opentelemetry/api': 1.9.1
       '@smithy/fetch-http-handler': 5.7.2
       '@types/json-schema': 7.0.15
       uuid: 14.0.2
       yaml: 2.9.0
-      zod: 4.5.1
+      zod: 4.5.2
     optionalDependencies:
       '@smithy/types': 4.17.2
       express: 5.2.1
@@ -1873,7 +1873,7 @@ snapshots:
       '@fastify/error': 4.2.0
       fastq: 1.20.1
 
-  bedrock-agentcore@0.4.3(@strands-agents/sdk@1.15.0(@modelcontextprotocol/sdk@1.29.0(zod@4.5.1))(@opentelemetry/api@1.9.1)(@smithy/types@4.17.2)(express@5.2.1)(zod@4.5.1)):
+  bedrock-agentcore@0.4.3(@strands-agents/sdk@1.15.0(@modelcontextprotocol/sdk@1.29.0(zod@4.5.2))(@opentelemetry/api@1.9.1)(@smithy/types@4.17.2)(express@5.2.1)(zod@4.5.2)):
     dependencies:
       '@aws-crypto/sha256-js': 5.2.0
       '@aws-sdk/client-bedrock-agentcore': 3.1095.0
@@ -1889,9 +1889,9 @@ snapshots:
       '@types/ws': 8.18.1
       fastify: 5.10.0
       ws: 8.21.1
-      zod: 4.5.1
+      zod: 4.5.2
     optionalDependencies:
-      '@strands-agents/sdk': 1.15.0(@modelcontextprotocol/sdk@1.29.0(zod@4.5.1))(@opentelemetry/api@1.9.1)(@smithy/types@4.17.2)(express@5.2.1)(zod@4.5.1)
+      '@strands-agents/sdk': 1.15.0(@modelcontextprotocol/sdk@1.29.0(zod@4.5.2))(@opentelemetry/api@1.9.1)(@smithy/types@4.17.2)(express@5.2.1)(zod@4.5.2)
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -2434,8 +2434,8 @@ snapshots:
 
   yaml@2.9.0: {}
 
-  zod-to-json-schema@3.25.2(zod@4.5.1):
+  zod-to-json-schema@3.25.2(zod@4.5.2):
     dependencies:
-      zod: 4.5.1
+      zod: 4.5.2
 
-  zod@4.5.1: {}
+  zod@4.5.2: {}
