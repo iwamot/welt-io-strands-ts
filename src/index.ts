@@ -83,8 +83,10 @@ interface WireSource {
   bytes: string;
 }
 
-type WireBlock =
-  | { text: string }
+type WireTextBlock = { text: string };
+
+type WireUserBlock =
+  | WireTextBlock
   | { image: { format: WireImageFormat; source: WireSource } }
   | {
       document: {
@@ -96,10 +98,9 @@ type WireBlock =
   | { video: { format: WireVideoFormat; source: WireSource } };
 
 /** One Converse-shaped message of Welt's payload. */
-export interface WireMessage {
-  role: "user" | "assistant";
-  content: WireBlock[];
-}
+export type WireMessage =
+  | { role: "user"; content: WireUserBlock[] }
+  | { role: "assistant"; content: WireTextBlock[] };
 
 /**
  * Decode Welt's Converse-shaped messages into the messages Strands consumes.
@@ -132,7 +133,7 @@ function decodedMessage(message: WireMessage): MessageData {
 // rebuilt.
 const ALLOWED_BLOCK_KEYS = new Set(["text", "image", "document", "video"]);
 
-function decodedBlock(block: WireBlock): ContentBlockData {
+function decodedBlock(block: WireUserBlock): ContentBlockData {
   if (!Object.keys(block).every((key) => ALLOWED_BLOCK_KEYS.has(key))) {
     throw new Error(
       `unexpected content block: ${Object.keys(block).sort().join(", ")}`,
