@@ -49,7 +49,7 @@
     "@strands-agents/sdk": ">=1.2.0"
   },
   "devDependencies": {
-    "@strands-agents/sdk": "1.15.0",
+    "@strands-agents/sdk": "1.16.0",
     "@types/node": "24.13.3",
     "typescript": "7.0.2"
   }
