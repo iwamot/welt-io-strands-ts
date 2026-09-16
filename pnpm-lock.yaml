@@ -16,8 +16,8 @@ importers:
         specifier: 1.17.0
         version: 1.17.0(@modelcontextprotocol/sdk@1.29.0(zod@4.6.5))(@opentelemetry/api@1.9.1)(@smithy/types@4.17.2)(@tobilu/qmd@2.8.3(typescript@7.0.2))(express@5.2.1)(zod@4.6.5)
       '@types/node':
-        specifier: 24.13.4
-        version: 24.13.4
+        specifier: 24.13.5
+        version: 24.13.5
       typescript:
         specifier: 7.0.2
         version: 7.0.2
@@ -38,8 +38,8 @@ importers:
         version: 4.6.5
     devDependencies:
       '@types/node':
-        specifier: 24.13.4
-        version: 24.13.4
+        specifier: 24.13.5
+        version: 24.13.5
       typescript:
         specifier: 7.0.2
         version: 7.0.2
@@ -573,6 +573,9 @@ packages:
 
   '@types/node@24.13.4':
     resolution: {integrity: sha512-YJ7EqCstVTzIr0fMr7qul/977en+pQHrfmuKIo6Zr9i75Be21dr3MovcfvGtyvi2HAUrRerWps5sMO9I7WaxDw==}
+
+  '@types/node@24.13.5':
+    resolution: {integrity: sha512-TXyindR+lBr22aJIdMQzCFHPHR6cR4js838mRDCSz5hOKWZvZwsXSSiXDmjRj4iJmgl+sR9O+1mkoVBSMadNug==}
 
   '@types/ws@8.18.1':
     resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
@@ -1748,9 +1751,6 @@ packages:
   zod@4.2.1:
     resolution: {integrity: sha512-0wZ1IRqGGhMP76gLqz8EyfBXKk0J2qo2+H3fi4mcUP/KtTocoX08nmIAHl1Z2kJIZbZee8KOpBCSNPRgauucjw==}
 
-  zod@4.6.4:
-    resolution: {integrity: sha512-AXSD6hvGdvRjajG/l1cC+d6IrhH+sjmPKtYeQdJIK8MFJl3LyClzS+o/YsVC+zQZPupAaeH5skwwm8YqYH7BqA==}
-
   zod@4.6.5:
     resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
 
@@ -2086,7 +2086,7 @@ snapshots:
 
   '@modelcontextprotocol/core@2.0.0':
     dependencies:
-      zod: 4.6.4
+      zod: 4.6.5
     optional: true
 
   '@modelcontextprotocol/sdk@1.29.0(zod@4.6.5)':
@@ -2114,7 +2114,7 @@ snapshots:
   '@modelcontextprotocol/server@2.0.0':
     dependencies:
       '@modelcontextprotocol/core': 2.0.0
-      zod: 4.6.4
+      zod: 4.6.5
     optional: true
 
   '@node-llama-cpp/linux-arm64@3.20.0':
@@ -2380,6 +2380,10 @@ snapshots:
   '@types/json-schema@7.0.15': {}
 
   '@types/node@24.13.4':
+    dependencies:
+      undici-types: 7.18.2
+
+  '@types/node@24.13.5':
     dependencies:
       undici-types: 7.18.2
 
@@ -3633,9 +3637,6 @@ snapshots:
       zod: 4.6.5
 
   zod@4.2.1:
-    optional: true
-
-  zod@4.6.4:
     optional: true
 
   zod@4.6.5: {}
