@@ -74,62 +74,62 @@ url_api = "https://api.github.com/repos/hadolint/hadolint/releases/assets/496546
 provenance = "github-attestations"
 
 [[tools."aqua:jdx/aube"]]
-version = "2.5.0"
+version = "2.6.0"
 backend = "aqua:jdx/aube"
-specifiers = ["2.5.0"]
+specifiers = ["2.6.0"]
 
 [tools."aqua:jdx/aube"."platforms.linux-arm64"]
-checksum = "sha256:478cc5c1a34a0df8d6ffa89e7cff8eff835cf480775eff9f3eb649f6daf557b7"
-url = "https://github.com/aubepkg/aube/releases/download/v2.5.0/aube-v2.5.0-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/591922450"
+checksum = "sha256:d5ae9aea97605d8b6e06ee055d66744450624de8add3a3021073d32248acd0fe"
+url = "https://github.com/aubepkg/aube/releases/download/v2.6.0/aube-v2.6.0-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/596408047"
 provenance = "github-attestations"
 
 [tools."aqua:jdx/aube"."platforms.linux-arm64-musl"]
-checksum = "sha256:dad68ccd45221c30d2d5d8a96ea40ccd344893673bff19175d9c425d4552747e"
-url = "https://github.com/aubepkg/aube/releases/download/v2.5.0/aube-v2.5.0-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/591895658"
+checksum = "sha256:bf72a0221eb699e27d2c8a688ff8fdbbe60f7c18d4ca2da5e8e63f054a711510"
+url = "https://github.com/aubepkg/aube/releases/download/v2.6.0/aube-v2.6.0-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/596373828"
 provenance = "github-attestations"
 
 [tools."aqua:jdx/aube"."platforms.linux-x64"]
-checksum = "sha256:15c5371d4f847da83dd51b4d182cd0928dcd52a9d5cea36d07fb44f3776ee72e"
-url = "https://github.com/aubepkg/aube/releases/download/v2.5.0/aube-v2.5.0-x86_64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/591897724"
+checksum = "sha256:ded40222ca0b9653e738b5f3c38c6c95a4e58d8dc693151bea48b349e1d487bb"
+url = "https://github.com/aubepkg/aube/releases/download/v2.6.0/aube-v2.6.0-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/596382982"
 provenance = "github-attestations"
 
 [tools."aqua:jdx/aube"."platforms.linux-x64-baseline"]
-checksum = "sha256:15c5371d4f847da83dd51b4d182cd0928dcd52a9d5cea36d07fb44f3776ee72e"
-url = "https://github.com/aubepkg/aube/releases/download/v2.5.0/aube-v2.5.0-x86_64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/591897724"
+checksum = "sha256:ded40222ca0b9653e738b5f3c38c6c95a4e58d8dc693151bea48b349e1d487bb"
+url = "https://github.com/aubepkg/aube/releases/download/v2.6.0/aube-v2.6.0-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/596382982"
 provenance = "github-attestations"
 
 [tools."aqua:jdx/aube"."platforms.linux-x64-musl"]
-checksum = "sha256:335c0ccd4e2ee4faa1875132ffdd7c21534760021e944e5e638e2a0547421643"
-url = "https://github.com/aubepkg/aube/releases/download/v2.5.0/aube-v2.5.0-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/591897237"
+checksum = "sha256:b7f825989338bcd0cfb3df132779b1fe89fb2b610f7a553879860d7e7f60ca83"
+url = "https://github.com/aubepkg/aube/releases/download/v2.6.0/aube-v2.6.0-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/596379712"
 provenance = "github-attestations"
 
 [tools."aqua:jdx/aube"."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:335c0ccd4e2ee4faa1875132ffdd7c21534760021e944e5e638e2a0547421643"
-url = "https://github.com/aubepkg/aube/releases/download/v2.5.0/aube-v2.5.0-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/591897237"
+checksum = "sha256:b7f825989338bcd0cfb3df132779b1fe89fb2b610f7a553879860d7e7f60ca83"
+url = "https://github.com/aubepkg/aube/releases/download/v2.6.0/aube-v2.6.0-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/596379712"
 provenance = "github-attestations"
 
 [tools."aqua:jdx/aube"."platforms.macos-arm64"]
-checksum = "sha256:cb40e0e58092ae9aa1781127b0770e73995562dc570113179d17705289517495"
-url = "https://github.com/aubepkg/aube/releases/download/v2.5.0/aube-v2.5.0-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/591916160"
+checksum = "sha256:c7480a9ea02c59a61d956d9e778808716d7336df4bd97a6ad99eb7c2fb933b4e"
+url = "https://github.com/aubepkg/aube/releases/download/v2.6.0/aube-v2.6.0-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/596417078"
 provenance = "github-attestations"
 
 [tools."aqua:jdx/aube"."platforms.windows-x64"]
-checksum = "sha256:4d39e74cc45bf418f9cdf0bd81ac846aefc8b7045077afe8cf3226366dc091fe"
-url = "https://github.com/aubepkg/aube/releases/download/v2.5.0/aube-v2.5.0-x86_64-pc-windows-msvc.zip"
-url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/591918853"
+checksum = "sha256:bf34d4e318054b56286b5fc424a8361122c4516d848f4f31c7ffb06ac469c540"
+url = "https://github.com/aubepkg/aube/releases/download/v2.6.0/aube-v2.6.0-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/596408538"
 provenance = "github-attestations"
 
 [tools."aqua:jdx/aube"."platforms.windows-x64-baseline"]
-checksum = "sha256:4d39e74cc45bf418f9cdf0bd81ac846aefc8b7045077afe8cf3226366dc091fe"
-url = "https://github.com/aubepkg/aube/releases/download/v2.5.0/aube-v2.5.0-x86_64-pc-windows-msvc.zip"
-url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/591918853"
+checksum = "sha256:bf34d4e318054b56286b5fc424a8361122c4516d848f4f31c7ffb06ac469c540"
+url = "https://github.com/aubepkg/aube/releases/download/v2.6.0/aube-v2.6.0-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/596408538"
 provenance = "github-attestations"
 
 [[tools."aqua:koalaman/shellcheck"]]
