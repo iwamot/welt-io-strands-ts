@@ -36,20 +36,24 @@ One difference from the cloud: AgentCore Runtime gives every session its own mic
 Deploy with the [AgentCore CLI](https://github.com/aws/agentcore-cli):
 
 ```sh
-agentcore create --name WeltExample --no-agent
+agentcore create --name WeltExample
 cd WeltExample
-agentcore add agent --name WeltExample --type create --build CodeZip --language TypeScript --framework Strands --model-provider Bedrock --memory none
+agentcore add runtime --name WeltExample --language typescript
 
 curl -o app/WeltExample/main.ts https://raw.githubusercontent.com/iwamot/welt-io-strands-ts/main/examples/agent/src/main.ts
-# @strands-agents/sdk's context-offloader imports @aws-sdk/client-s3, which the CodeZip bundle does not mark external
-npm --prefix app/WeltExample install @welt-io/strands zod @aws-sdk/client-s3
+npm --prefix app/WeltExample install @strands-agents/sdk @welt-io/strands bedrock-agentcore zod
 
 agentcore deploy
 ```
 
 The agent uses `global.anthropic.claude-sonnet-4-6`, so enable access for it in the Amazon Bedrock console, in the region you deployed to, or point the `MODEL_ID` environment variable at another Converse model — and `BEDROCK_REGION` at another region, to leave the model access where it already is. `agentcore status` reports the agent runtime ARN: Welt's `AGENT_ARN` points at it.
 
-The CLI has no teardown command — removing the deployment means deleting the CloudFormation stack it created, `AgentCore-WeltExample-default`.
+To remove the deployment, take the runtime out of the project and deploy the empty project, which deletes the CloudFormation stack, `AgentCore-WeltExample-default`:
+
+```sh
+agentcore remove runtime --name WeltExample
+agentcore deploy --yes
+```
 
 ## Tools
 
