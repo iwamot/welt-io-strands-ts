@@ -4,11 +4,11 @@ The example agent for [Welt](https://github.com/iwamot/welt): the smallest compl
 
 ## Stack
 
-| Package | Role |
-|---------|------|
-| [Bedrock AgentCore SDK](https://github.com/aws/bedrock-agentcore-sdk-typescript) | Serves the endpoint |
-| [Strands Agents SDK](https://strandsagents.com/) | Runs the model and the tools |
-| @welt-io/strands | Adapts the wire to Welt |
+| Package                                                                          | Role                         |
+| -------------------------------------------------------------------------------- | ---------------------------- |
+| [Bedrock AgentCore SDK](https://github.com/aws/bedrock-agentcore-sdk-typescript) | Serves the endpoint          |
+| [Strands Agents SDK](https://strandsagents.com/)                                 | Runs the model and the tools |
+| @welt-io/strands                                                                 | Adapts the wire to Welt      |
 
 ## Run Locally
 
