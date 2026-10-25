@@ -13,7 +13,7 @@ importers:
     devDependencies:
       '@strands-agents/sdk':
         specifier: 1.22.0
-        version: 1.22.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@smithy/types@4.19.0)(zod@4.6.7)
+        version: 1.22.0(@modelcontextprotocol/client@2.4.0)(@opentelemetry/api@1.10.0)(@smithy/types@4.19.0)(zod@4.6.7)
       '@types/node':
         specifier: 24.19.2
         version: 24.19.2
@@ -25,13 +25,13 @@ importers:
     dependencies:
       '@strands-agents/sdk':
         specifier: 1.22.0
-        version: 1.22.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@smithy/types@4.19.0)(zod@4.6.7)
+        version: 1.22.0(@modelcontextprotocol/client@2.4.0)(@opentelemetry/api@1.10.0)(@smithy/types@4.19.0)(zod@4.6.7)
       '@welt-io/strands':
         specifier: workspace:*
         version: link:../..
       bedrock-agentcore:
         specifier: 0.4.6
-        version: 0.4.6(@strands-agents/sdk@1.22.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@smithy/types@4.19.0)(zod@4.6.7))
+        version: 0.4.6(@strands-agents/sdk@1.22.0(@modelcontextprotocol/client@2.4.0)(@opentelemetry/api@1.10.0)(@smithy/types@4.19.0)(zod@4.6.7))
       zod:
         specifier: 4.6.7
         version: 4.6.7
@@ -230,12 +230,12 @@ packages:
   '@fastify/websocket@11.3.4':
     resolution: {integrity: sha512-firnJtEOv6pfdoXIzFDMbd+omgWwFNfLtdM8JejNFr/9lT/9DHkEhjTShuRFeE4phqrevD2B3JRW0v6uyzWhHQ==}
 
-  '@modelcontextprotocol/client@2.3.1':
-    resolution: {integrity: sha512-mIGZXpHsjnZ6lD+gD/WCMpR5k8yVQQ8nNFH1N0Srf7AvnwTUMYD6pvTY8ng2+He5FfV7YMZLmrjL7cLa/cc3dQ==}
+  '@modelcontextprotocol/client@2.4.0':
+    resolution: {integrity: sha512-LgrD2OphHuG12vfKFKz6SOnq7bKHQmhGJIAYdD+MZBn2npHEyry6uD8zvktodtl5CQM85MO0anUyD9JwmUmxww==}
     engines: {node: '>=20'}
 
-  '@modelcontextprotocol/core@2.3.1':
-    resolution: {integrity: sha512-laVmIhPGpWi7rG9q+0UigblRN0Hws/Yjlb6qLFtVqryXVLkc4h+yN8z731POD2LnAGQlFe7/tXhUm7Bi0YB91g==}
+  '@modelcontextprotocol/core@2.4.0':
+    resolution: {integrity: sha512-z8QBKqdfXLPzkLQuG4xp8hrVEMm1PZ1IgxMN2sMbJiFiAKOWXnAzogXn2W4aqIBlP1ea6U5yiqVquvUNM1Cj6Q==}
     engines: {node: '>=20'}
 
   '@modelcontextprotocol/ext-tasks@0.2.2':
@@ -1148,9 +1148,9 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@modelcontextprotocol/client@2.3.1':
+  '@modelcontextprotocol/client@2.4.0':
     dependencies:
-      '@modelcontextprotocol/core': 2.3.1
+      '@modelcontextprotocol/core': 2.4.0
       cross-spawn: 7.0.6
       eventsource: 3.0.7
       eventsource-parser: 3.1.1
@@ -1158,15 +1158,15 @@ snapshots:
       pkce-challenge: 5.0.1
       zod: 4.6.7
 
-  '@modelcontextprotocol/core@2.3.1':
+  '@modelcontextprotocol/core@2.4.0':
     dependencies:
       zod: 4.6.7
 
-  '@modelcontextprotocol/ext-tasks@0.2.2(@modelcontextprotocol/client@2.3.1)':
+  '@modelcontextprotocol/ext-tasks@0.2.2(@modelcontextprotocol/client@2.4.0)':
     dependencies:
       zod: 4.6.7
     optionalDependencies:
-      '@modelcontextprotocol/client': 2.3.1
+      '@modelcontextprotocol/client': 2.4.0
 
   '@opentelemetry/api@1.10.0': {}
 
@@ -1233,11 +1233,11 @@ snapshots:
       '@smithy/core': 3.36.2
       tslib: 2.8.1
 
-  '@strands-agents/sdk@1.22.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@smithy/types@4.19.0)(zod@4.6.7)':
+  '@strands-agents/sdk@1.22.0(@modelcontextprotocol/client@2.4.0)(@opentelemetry/api@1.10.0)(@smithy/types@4.19.0)(zod@4.6.7)':
     dependencies:
       '@aws-sdk/client-bedrock-runtime': 3.1156.0
-      '@modelcontextprotocol/client': 2.3.1
-      '@modelcontextprotocol/ext-tasks': 0.2.2(@modelcontextprotocol/client@2.3.1)
+      '@modelcontextprotocol/client': 2.4.0
+      '@modelcontextprotocol/ext-tasks': 0.2.2(@modelcontextprotocol/client@2.4.0)
       '@opentelemetry/api': 1.10.0
       '@smithy/fetch-http-handler': 5.8.0
       '@types/json-schema': 7.0.15
@@ -1337,7 +1337,7 @@ snapshots:
       '@fastify/error': 4.2.1
       fastq: 1.20.3
 
-  bedrock-agentcore@0.4.6(@strands-agents/sdk@1.22.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@smithy/types@4.19.0)(zod@4.6.7)):
+  bedrock-agentcore@0.4.6(@strands-agents/sdk@1.22.0(@modelcontextprotocol/client@2.4.0)(@opentelemetry/api@1.10.0)(@smithy/types@4.19.0)(zod@4.6.7)):
     dependencies:
       '@aws-crypto/sha256-js': 5.2.0
       '@aws-sdk/client-bedrock-agentcore': 3.1156.0
@@ -1358,7 +1358,7 @@ snapshots:
       ws: 8.22.0
       zod: 4.6.7
     optionalDependencies:
-      '@strands-agents/sdk': 1.22.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@smithy/types@4.19.0)(zod@4.6.7)
+      '@strands-agents/sdk': 1.22.0(@modelcontextprotocol/client@2.4.0)(@opentelemetry/api@1.10.0)(@smithy/types@4.19.0)(zod@4.6.7)
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
