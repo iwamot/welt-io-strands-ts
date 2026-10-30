@@ -34,6 +34,8 @@ aube licenses --json --long | node -e '
       "Python-2.0",
       "Zlib",
       // SPDX expressions and free-form license fields
+      // Monty WASI shim: Apache-2.0 with additional redistribution permissions.
+      "(Apache-2.0 WITH LLVM-exception)",
       "(AFL-2.1 OR BSD-3-Clause)",
       "(BSD-2-Clause OR MIT OR Apache-2.0)",
       "MIT OR Apache",

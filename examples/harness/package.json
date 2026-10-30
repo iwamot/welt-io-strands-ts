@@ -1,0 +1,21 @@
+{
+  "name": "welt-io-strands-ts-example-harness",
+  "private": true,
+  "description": "A Strands Harness agent served through Welt's wire contract.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "start": "node src/main.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@strands-agents/harness": "0.3.2",
+    "@strands-agents/sdk": "1.22.0",
+    "@welt-io/strands": "workspace:*",
+    "bedrock-agentcore": "0.4.6"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "typescript": "7.0.2"
+  }
+}
