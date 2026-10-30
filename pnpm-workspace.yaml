@@ -8,8 +8,14 @@ defaultLockfileFormat: pnpm
 minimumReleaseAge: 1440  # 1 day
 minimumReleaseAgeStrict: true
 
+# Exercise the Harness release used by the example before its one-day soak.
+# Remove this exception once 0.3.2 has completed its one-day soak.
+minimumReleaseAgeExclude:
+  - '@strands-agents/harness'
+
 packages:
   - examples/agent
+  - examples/harness
 
 # Overrides live here (not package.json "overrides") because both toolchains
 # read this file: Renovate updates the lockfile with upstream pnpm, which
