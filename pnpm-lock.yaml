@@ -49,8 +49,8 @@ importers:
         specifier: 1.10.0
         version: 1.10.0
       '@strands-agents/harness':
-        specifier: 0.3.2
-        version: 0.3.2(@opentelemetry/api@1.10.0)(@strands-agents/sdk@1.22.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7))
+        specifier: 0.3.3
+        version: 0.3.3(@opentelemetry/api@1.10.0)(@strands-agents/sdk@1.22.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7))
       '@strands-agents/sdk':
         specifier: 1.22.0
         version: 1.22.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7)
@@ -632,8 +632,8 @@ packages:
     resolution: {integrity: sha512-7wNWV7SugHpcMA7uzEawJNpE0GrasXM7a9E+1+Wm6NxVuDClESac/AKt+G7jMZNUz5vBLWqKlqVV7Sv7AtUr6Q==}
     engines: {node: '>=18.0.0'}
 
-  '@strands-agents/harness@0.3.2':
-    resolution: {integrity: sha512-/GPvgi8zZax+0156w8Pf+ZLh3DfUV9FmCq6tdfGPIjROwCkQ0WwMCfYY+AvmftlNKXNqy6+fdR4rThYWIkfDjA==}
+  '@strands-agents/harness@0.3.3':
+    resolution: {integrity: sha512-mpcu6+sqcnT40EW7uTH1uWVH/wwDoeIoJ9ZM22MHWYyjs+wR4czx2revzp6o3th1tfXBkam54SyA9N0k8wtmdQ==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
       '@anthropic-ai/sdk': ^0.109.1
@@ -1830,7 +1830,7 @@ snapshots:
       '@smithy/core': 3.36.2
       tslib: 2.8.1
 
-  '@strands-agents/harness@0.3.2(@opentelemetry/api@1.10.0)(@strands-agents/sdk@1.22.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7))':
+  '@strands-agents/harness@0.3.3(@opentelemetry/api@1.10.0)(@strands-agents/sdk@1.22.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7))':
     dependencies:
       '@opentelemetry/exporter-metrics-otlp-http': 0.219.0(@opentelemetry/api@1.10.0)
       '@opentelemetry/exporter-trace-otlp-http': 0.219.0(@opentelemetry/api@1.10.0)
