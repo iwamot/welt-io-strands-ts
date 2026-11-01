@@ -16,7 +16,7 @@ npm install @welt-io/strands
 
 ## Usage
 
-`startReply` and `renderableEvents` are the wiring between Welt's payload and a Strands agent, so a deployable is your agent plus a short handler:
+`startReply` and `renderableEvents` are the wiring between Welt's payload and a Strands agent, so a deployable is your agent plus a short handler. Its server comes from `bedrock-agentcore`, a separate package (`npm install bedrock-agentcore`):
 
 ```ts
 import { Agent } from "@strands-agents/sdk";
@@ -38,6 +38,8 @@ app.run();
 ```
 
 The Agent is yours to choose, one payload at a time. An agent with approval tools keeps the interrupted runs it needs to resume; [`examples/agent`](examples/agent) keeps them in a `Map` in its entrypoint, under the interrupt ids Welt sends back, and takes the whole stop out of it when the answers arrive.
+
+To see it in Slack, run the file (`node main.ts`). It serves on port 8080, where Welt's local mode reaches it, so follow [Welt's Quick Start](https://github.com/iwamot/welt#quick-start) with this file in place of the example agent. To deploy, follow the example's [Deploy](examples/agent#deploy) section with this file in place of the downloaded `main.ts`, then point Welt's `AGENT_ARN` at the runtime.
 
 See [`examples/agent`](examples/agent) for the full version — the smallest complete agent built on this package (text streaming, tool use, file output, file input, and human-approval tools). The sections below cover `startReply` and the adapters it wires in.
 
@@ -102,6 +104,8 @@ Reduces the events of `Agent.stream()` — objects Welt does not render — to t
 | Tool-use starts and tool results | `current_tool_use` / `tool_result` | "Using tool" indicators (tool output stays off the wire) |
 | Image/document/video blocks the assistant message carries, or a tool named in `filesFrom` returns | `file` | An uploaded file ([size limits](https://github.com/iwamot/welt/blob/main/docs/wire.md#limits)) |
 | Interrupts pending in the final result | `interrupt` | Buttons and/or a text field |
+
+**Files the model generates** do not reach the thread on the SDK's built-in model providers. The adapter uploads file blocks in an assistant message, but the SDK's stream aggregation builds only text, tool use, reasoning, and citation blocks, so the thread gets files only from tools named in `filesFrom`.
 
 A run that stops for human input ends its stream with one `interrupt` event per pending interrupt — a faithful copy of the interrupt's id, name, and reason, the reason passed through unmodified since interpreting it is the renderer's job. Agents that do not interrupt see no change. To ask for human input from a tool, call `ToolContext.interrupt` with a reason built by `interruptReason` below; on resume, the same call returns the human's answer.
 
