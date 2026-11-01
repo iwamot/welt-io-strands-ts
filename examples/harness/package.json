@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@opentelemetry/api": "1.10.0",
-    "@strands-agents/harness": "0.3.2",
+    "@strands-agents/harness": "0.3.3",
     "@strands-agents/sdk": "1.22.0",
     "@welt-io/strands": "workspace:*",
     "bedrock-agentcore": "0.4.6"
