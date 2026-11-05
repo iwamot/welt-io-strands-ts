@@ -12,8 +12,8 @@ importers:
   .:
     devDependencies:
       '@strands-agents/sdk':
-        specifier: 1.23.0
-        version: 1.23.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7)
+        specifier: 1.24.0
+        version: 1.24.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7)
       '@types/node':
         specifier: 26.6.6
         version: 26.6.6
@@ -24,14 +24,14 @@ importers:
   examples/agent:
     dependencies:
       '@strands-agents/sdk':
-        specifier: 1.23.0
-        version: 1.23.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7)
+        specifier: 1.24.0
+        version: 1.24.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7)
       '@welt-io/strands':
         specifier: workspace:*
         version: link:../..
       bedrock-agentcore:
         specifier: 0.4.6
-        version: 0.4.6(@strands-agents/sdk@1.23.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7))
+        version: 0.4.6(@strands-agents/sdk@1.24.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7))
       zod:
         specifier: 4.6.7
         version: 4.6.7
@@ -50,16 +50,16 @@ importers:
         version: 1.10.0
       '@strands-agents/harness':
         specifier: 0.3.3
-        version: 0.3.3(@opentelemetry/api@1.10.0)(@strands-agents/sdk@1.23.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7))
+        version: 0.3.3(@opentelemetry/api@1.10.0)(@strands-agents/sdk@1.24.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7))
       '@strands-agents/sdk':
-        specifier: 1.23.0
-        version: 1.23.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7)
+        specifier: 1.24.0
+        version: 1.24.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7)
       '@welt-io/strands':
         specifier: workspace:*
         version: link:../..
       bedrock-agentcore:
         specifier: 0.4.6
-        version: 0.4.6(@strands-agents/sdk@1.23.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7))
+        version: 0.4.6(@strands-agents/sdk@1.24.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7))
     devDependencies:
       '@types/node':
         specifier: 26.6.6
@@ -652,8 +652,8 @@ packages:
       openai:
         optional: true
 
-  '@strands-agents/sdk@1.23.0':
-    resolution: {integrity: sha512-3H0D8gGT1Lk89iQ6LFIZp1Rs5RX9HOrXFNW61uCzDqPIYp2EABJVQWgM2VBFzsZYdvw+xiQ4ur3gEO6rgF/sSQ==}
+  '@strands-agents/sdk@1.24.0':
+    resolution: {integrity: sha512-vR37jjJN1C3xk0LIsOUCz0SMFnIAzJhydBxzJl1eGzFmQdhdGAMWZVR8WAjZymzeWc0xHs94kltwr3ddhSeSDA==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
       '@a2a-js/sdk': ^0.3.10
@@ -1834,7 +1834,7 @@ snapshots:
       '@smithy/core': 3.36.2
       tslib: 2.8.1
 
-  '@strands-agents/harness@0.3.3(@opentelemetry/api@1.10.0)(@strands-agents/sdk@1.23.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7))':
+  '@strands-agents/harness@0.3.3(@opentelemetry/api@1.10.0)(@strands-agents/sdk@1.24.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7))':
     dependencies:
       '@opentelemetry/exporter-metrics-otlp-http': 0.219.0(@opentelemetry/api@1.10.0)
       '@opentelemetry/exporter-trace-otlp-http': 0.219.0(@opentelemetry/api@1.10.0)
@@ -1843,7 +1843,7 @@ snapshots:
       '@opentelemetry/sdk-trace-base': 2.12.0(@opentelemetry/api@1.10.0)
       '@opentelemetry/sdk-trace-node': 2.12.0(@opentelemetry/api@1.10.0)
       '@pydantic/monty': 0.0.23
-      '@strands-agents/sdk': 1.23.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7)
+      '@strands-agents/sdk': 1.24.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7)
       cjs-module-lexer: 2.3.0
       esbuild: 0.28.2
       import-meta-resolve: 4.2.0
@@ -1852,7 +1852,7 @@ snapshots:
     transitivePeerDependencies:
       - '@opentelemetry/api'
 
-  '@strands-agents/sdk@1.23.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7)':
+  '@strands-agents/sdk@1.24.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7)':
     dependencies:
       '@aws-sdk/client-bedrock-runtime': 3.1156.0
       '@modelcontextprotocol/client': 2.3.1
@@ -1958,7 +1958,7 @@ snapshots:
       '@fastify/error': 4.2.1
       fastq: 1.20.3
 
-  bedrock-agentcore@0.4.6(@strands-agents/sdk@1.23.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7)):
+  bedrock-agentcore@0.4.6(@strands-agents/sdk@1.24.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7)):
     dependencies:
       '@aws-crypto/sha256-js': 5.2.0
       '@aws-sdk/client-bedrock-agentcore': 3.1156.0
@@ -1979,7 +1979,7 @@ snapshots:
       ws: 8.22.0
       zod: 4.6.7
     optionalDependencies:
-      '@strands-agents/sdk': 1.23.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7)
+      '@strands-agents/sdk': 1.24.0(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7)
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
