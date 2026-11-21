@@ -9,7 +9,8 @@ mise install
 # TypeScript
 aube install --frozen-lockfile
 # Monty WASI shim: Apache-2.0 with additional redistribution permissions.
-mise run licenses node '(Apache-2.0 WITH LLVM-exception)'
+# fast-sha256 (via @anthropic-ai/sdk in the harness example): Unlicense.
+mise run licenses node '(Apache-2.0 WITH LLVM-exception)' Unlicense
 aube audit --fix update --ignore-unfixable
 aube run prune
 aube run check:write
