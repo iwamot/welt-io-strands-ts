@@ -18,8 +18,9 @@ import {
   ToolResultBlock,
   VideoBlock,
 } from "@strands-agents/sdk";
-import type { RenderableEventsOptions } from "../src/index.ts";
+import type { RenderableEvent, RenderableEventsOptions } from "../src/index.ts";
 import { renderableEvents } from "../src/index.ts";
+import { sequences } from "./sequences.ts";
 
 const HI = new Uint8Array([104, 105]); // "aGk=" encoded
 
@@ -126,6 +127,121 @@ async function warningsOf(run: () => Promise<void>): Promise<string[]> {
   return collected;
 }
 
+test("preserves stream order, repetitions, and public fields", async () => {
+  const reason = { message: "Deploy?", options: [{ value: "y" }] };
+  const cases: [AgentStreamEvent, RenderableEvent[]][] = [
+    [textDelta("Hello"), [{ data: "Hello" }]],
+    [textDelta("日本語\n "), [{ data: "日本語\n " }]],
+    [textDelta(""), []],
+    [
+      modelStreamUpdate({
+        type: "modelContentBlockStartEvent",
+        start: { type: "toolUseStart", name: "my_tool", toolUseId: "t1" },
+      }),
+      [{ current_tool_use: { toolUseId: "t1", name: "my_tool" } }],
+    ],
+    [
+      toolResult("t1", [new TextBlock("big output")]),
+      [{ tool_result: { toolUseId: "t1", status: "success" } }],
+    ],
+    [
+      toolResult("t2", [], "error"),
+      [{ tool_result: { toolUseId: "t2", status: "error" } }],
+    ],
+    [agentResult(), []],
+    [
+      agentResult([
+        interrupt("i1", "approval", reason),
+        interrupt("i2", "question", "free-form"),
+      ]),
+      [
+        { interrupt: { id: "i1", name: "approval", reason } },
+        { interrupt: { id: "i2", name: "question", reason: "free-form" } },
+      ],
+    ],
+  ];
+  for (const selected of sequences(cases, 3)) {
+    assert.deepEqual(
+      await rendered(selected.map(([event]) => event)),
+      selected.flatMap(([, output]) => output),
+    );
+  }
+});
+
+test("keeps each file's bytes, order, and originating tool together", async () => {
+  const raw = [
+    new Uint8Array([104, 105]),
+    new Uint8Array([0]),
+    Uint8Array.from({ length: 256 }, (_, i) => i),
+  ];
+  for (const bytes of raw) {
+    const documentBytes = Uint8Array.from([...bytes, 1]);
+    const videoBytes = Uint8Array.from([...bytes, 2]);
+    const blocks = [
+      new ImageBlock({ format: "png", source: { bytes } }),
+      new DocumentBlock({
+        name: "Report",
+        format: "pdf",
+        source: { bytes: documentBytes },
+      }),
+      new VideoBlock({ format: "3gp", source: { bytes: videoBytes } }),
+    ];
+    const files: RenderableEvent[] = [
+      {
+        file: {
+          name: "image.png",
+          bytes: Buffer.from(bytes).toString("base64"),
+        },
+      },
+      {
+        file: {
+          name: "Report.pdf",
+          bytes: Buffer.from(documentBytes).toString("base64"),
+        },
+      },
+      {
+        file: {
+          name: "video.3gp",
+          bytes: Buffer.from(videoBytes).toString("base64"),
+        },
+      },
+    ];
+    assert.deepEqual(
+      await rendered([modelMessage([new TextBlock("here you go"), ...blocks])]),
+      files,
+    );
+    for (const filesFrom of [
+      undefined,
+      [],
+      ["maker"],
+      ["reader"],
+      ["maker", "reader"],
+    ]) {
+      const events = [
+        toolCallStart("t1", "maker"),
+        toolCallStart("t2", "reader"),
+        toolResult("t2", blocks, "error"),
+        toolResult("t1", blocks),
+      ];
+      const expected: RenderableEvent[] = [
+        { tool_result: { toolUseId: "t2", status: "error" } },
+        ...(filesFrom?.includes("reader") ? files : []),
+        { tool_result: { toolUseId: "t1", status: "success" } },
+        ...(filesFrom?.includes("maker") ? files : []),
+      ];
+      assert.deepEqual(
+        await rendered(
+          events,
+          filesFrom === undefined
+            ? undefined
+            : { filesFrom: new Set(filesFrom) },
+        ),
+        expected,
+      );
+    }
+  }
+});
+
 describe("renderableEvents", () => {
   test("drops the events Welt does not render", async () => {
     const events = [
@@ -148,38 +264,6 @@ describe("renderableEvents", () => {
       }),
     ];
     assert.deepEqual(await rendered(events), []);
-  });
-
-  test("yields text deltas", async () => {
-    assert.deepEqual(await rendered([textDelta("Hello")]), [{ data: "Hello" }]);
-  });
-
-  test("drops a delta the model left empty", async () => {
-    // Welt renders nothing for it, and the wire has no event for nothing.
-    assert.deepEqual(await rendered([textDelta("")]), []);
-  });
-
-  test("turns a tool-use start into the tool-use indicator", async () => {
-    const events = [
-      modelStreamUpdate({
-        type: "modelContentBlockStartEvent",
-        start: { type: "toolUseStart", name: "my_tool", toolUseId: "t1" },
-      }),
-    ];
-    assert.deepEqual(await rendered(events), [
-      { current_tool_use: { toolUseId: "t1", name: "my_tool" } },
-    ]);
-  });
-
-  test("slims tool results to the toolUseId and status", async () => {
-    const events = [
-      toolResult("t1", [new TextBlock("big output")]),
-      toolResult("t2", [], "error"),
-    ];
-    assert.deepEqual(await rendered(events), [
-      { tool_result: { toolUseId: "t1", status: "success" } },
-      { tool_result: { toolUseId: "t2", status: "error" } },
-    ]);
   });
 
   test("keeps the files of a tool left out of filesFrom off the wire", async () => {
@@ -219,30 +303,6 @@ describe("renderableEvents", () => {
         [{ tool_result: { toolUseId: "t1", status: "success" } }],
       );
     }
-  });
-
-  test("emits a file event per file block a tool named in filesFrom returned", async () => {
-    const events = [
-      toolCallStart("t1", "create_sample_file"),
-      toolResult("t1", [
-        image(),
-        new DocumentBlock({
-          name: "Report",
-          format: "pdf",
-          source: { bytes: HI },
-        }),
-        new VideoBlock({ format: "3gp", source: { bytes: HI } }),
-      ]),
-    ];
-    assert.deepEqual(
-      await rendered(events, { filesFrom: ["create_sample_file"] }),
-      [
-        { tool_result: { toolUseId: "t1", status: "success" } },
-        { file: { name: "image.png", bytes: "aGk=" } },
-        { file: { name: "Report.pdf", bytes: "aGk=" } },
-        { file: { name: "video.3gp", bytes: "aGk=" } },
-      ],
-    );
   });
 
   test("keeps blocks that hold no file bytes off the wire", async () => {
@@ -334,32 +394,5 @@ describe("renderableEvents", () => {
       { tool_result: { toolUseId: "t1", status: "success" } },
       { file: { name: "document.csv", bytes: "aGk=" } },
     ]);
-  });
-
-  test("emits a file event per file block of the assistant message", async () => {
-    const events = [modelMessage([new TextBlock("here you go"), image()])];
-    assert.deepEqual(await rendered(events), [
-      { file: { name: "image.png", bytes: "aGk=" } },
-    ]);
-  });
-
-  test("ends an interrupted stream with the pending interrupts", async () => {
-    const reason = { message: "Deploy?", options: [{ value: "y" }] };
-    const events = [
-      textDelta("Working on it."),
-      agentResult([
-        interrupt("i1", "approval", reason),
-        interrupt("i2", "question", "free-form"),
-      ]),
-    ];
-    assert.deepEqual(await rendered(events), [
-      { data: "Working on it." },
-      { interrupt: { id: "i1", name: "approval", reason } },
-      { interrupt: { id: "i2", name: "question", reason: "free-form" } },
-    ]);
-  });
-
-  test("yields nothing for the usual result, which has no interrupts", async () => {
-    assert.deepEqual(await rendered([agentResult()]), []);
   });
 });
