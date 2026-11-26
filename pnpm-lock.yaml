@@ -30,8 +30,8 @@ importers:
         specifier: workspace:*
         version: link:../..
       bedrock-agentcore:
-        specifier: 0.4.7
-        version: 0.4.7(@strands-agents/sdk@1.26.0(@anthropic-ai/sdk@1.11.0(zod@4.6.7))(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7))
+        specifier: 0.5.0
+        version: 0.5.0(@strands-agents/sdk@1.26.0(@anthropic-ai/sdk@1.11.0(zod@4.6.7))(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7))
       zod:
         specifier: 4.6.7
         version: 4.6.7
@@ -58,8 +58,8 @@ importers:
         specifier: workspace:*
         version: link:../..
       bedrock-agentcore:
-        specifier: 0.4.7
-        version: 0.4.7(@strands-agents/sdk@1.26.0(@anthropic-ai/sdk@1.11.0(zod@4.6.7))(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7))
+        specifier: 0.5.0
+        version: 0.5.0(@strands-agents/sdk@1.26.0(@anthropic-ai/sdk@1.11.0(zod@4.6.7))(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7))
     devDependencies:
       '@types/node':
         specifier: 26.6.10
@@ -103,10 +103,6 @@ packages:
 
   '@aws-sdk/client-bedrock-agentcore-control@3.1156.0':
     resolution: {integrity: sha512-GcrRWBlN77ov71e70H77PqcLPhTbjv2x1SD7/YSZgX0w8kUSnkjme6NwyXMmBX90m4yVxKcoJBEM67BG7Ur9rA==}
-    engines: {node: '>=20.0.0'}
-
-  '@aws-sdk/client-bedrock-agentcore@3.1156.0':
-    resolution: {integrity: sha512-EIV6HrEeZGSA39y5P/S/R5FqIP3nq8H5i0JLtvZy9+jUKiMKL7wHbKuGthsqgnFGfGBvnkcU75qo+JoBir1AhQ==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/client-bedrock-agentcore@3.1173.0':
@@ -1110,8 +1106,8 @@ packages:
   avvio@9.3.1:
     resolution: {integrity: sha512-QyTKW61/qlba+cUQBm/sT9X8lri4UdomqSDwCnrnj1IvLVDRRiXRkz4CgBRWB+/cmfC7SK5WQc8T1vSdGvaUcQ==}
 
-  bedrock-agentcore@0.4.7:
-    resolution: {integrity: sha512-YUBCzDTeL2OByUd9XkavuxzNFxp4TF4l2FBIEzz9ZumUM9CvgpdoB7927HoVGSkrX0DigoFUa3WrH4FRqS8lmg==}
+  bedrock-agentcore@0.5.0:
+    resolution: {integrity: sha512-+/Dw8Lf4d9JWz0xK1OlrbdFO6rgge6xokkymNROH74zSikex2rHin96zg9IuyUJUEwoDmTbCPIWyPuw4Yiuzhw==}
     engines: {node: '>=20.0.0'}
     peerDependencies:
       '@a2a-js/sdk': '>=1.0.0'
@@ -1436,7 +1432,7 @@ snapshots:
   '@aws-crypto/crc32@3.0.0':
     dependencies:
       '@aws-crypto/util': 3.0.0
-      '@aws-sdk/types': 3.975.0
+      '@aws-sdk/types': 3.975.1
       tslib: 1.14.1
 
   '@aws-crypto/sha256-js@4.0.0':
@@ -1448,12 +1444,12 @@ snapshots:
   '@aws-crypto/sha256-js@5.2.0':
     dependencies:
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.975.0
+      '@aws-sdk/types': 3.975.1
       tslib: 2.8.1
 
   '@aws-crypto/util@3.0.0':
     dependencies:
-      '@aws-sdk/types': 3.975.0
+      '@aws-sdk/types': 3.975.1
       '@aws-sdk/util-utf8-browser': 3.259.0
       tslib: 1.14.1
 
@@ -1465,30 +1461,19 @@ snapshots:
 
   '@aws-crypto/util@5.2.0':
     dependencies:
-      '@aws-sdk/types': 3.975.0
+      '@aws-sdk/types': 3.975.1
       '@smithy/util-utf8': 2.3.0
       tslib: 2.8.1
 
   '@aws-sdk/client-bedrock-agentcore-control@3.1156.0':
     dependencies:
-      '@aws-sdk/core': 3.978.5
-      '@aws-sdk/credential-provider-node': 3.972.88
-      '@aws-sdk/types': 3.975.0
-      '@smithy/core': 3.36.2
-      '@smithy/fetch-http-handler': 5.8.0
-      '@smithy/node-http-handler': 4.12.1
-      '@smithy/types': 4.19.0
-      tslib: 2.8.1
-
-  '@aws-sdk/client-bedrock-agentcore@3.1156.0':
-    dependencies:
-      '@aws-sdk/core': 3.978.5
-      '@aws-sdk/credential-provider-node': 3.972.88
-      '@aws-sdk/types': 3.975.0
-      '@smithy/core': 3.36.2
-      '@smithy/fetch-http-handler': 5.8.0
-      '@smithy/node-http-handler': 4.12.1
-      '@smithy/types': 4.19.0
+      '@aws-sdk/core': 3.981.0
+      '@aws-sdk/credential-provider-node': 3.972.97
+      '@aws-sdk/types': 3.975.1
+      '@smithy/core': 3.41.0
+      '@smithy/fetch-http-handler': 5.8.1
+      '@smithy/node-http-handler': 4.14.2
+      '@smithy/types': 4.20.0
       tslib: 2.8.1
 
   '@aws-sdk/client-bedrock-agentcore@3.1173.0':
@@ -1541,10 +1526,10 @@ snapshots:
 
   '@aws-sdk/credential-provider-cognito-identity@3.972.75':
     dependencies:
-      '@aws-sdk/nested-clients': 3.997.50
-      '@aws-sdk/types': 3.975.0
-      '@smithy/core': 3.36.2
-      '@smithy/types': 4.19.0
+      '@aws-sdk/nested-clients': 3.998.3
+      '@aws-sdk/types': 3.975.1
+      '@smithy/core': 3.41.0
+      '@smithy/types': 4.20.0
       tslib: 2.8.1
 
   '@aws-sdk/credential-provider-env@3.972.76':
@@ -1717,21 +1702,21 @@ snapshots:
 
   '@aws-sdk/credential-providers@3.1156.0':
     dependencies:
-      '@aws-sdk/core': 3.978.5
+      '@aws-sdk/core': 3.981.0
       '@aws-sdk/credential-provider-cognito-identity': 3.972.75
-      '@aws-sdk/credential-provider-env': 3.972.76
-      '@aws-sdk/credential-provider-http': 3.972.78
-      '@aws-sdk/credential-provider-ini': 3.973.21
-      '@aws-sdk/credential-provider-login': 3.972.83
-      '@aws-sdk/credential-provider-node': 3.972.88
-      '@aws-sdk/credential-provider-process': 3.972.76
-      '@aws-sdk/credential-provider-sso': 3.973.20
-      '@aws-sdk/credential-provider-web-identity': 3.972.82
-      '@aws-sdk/nested-clients': 3.997.50
-      '@aws-sdk/types': 3.975.0
-      '@smithy/core': 3.36.2
+      '@aws-sdk/credential-provider-env': 3.972.84
+      '@aws-sdk/credential-provider-http': 3.972.86
+      '@aws-sdk/credential-provider-ini': 3.973.30
+      '@aws-sdk/credential-provider-login': 3.972.92
+      '@aws-sdk/credential-provider-node': 3.972.97
+      '@aws-sdk/credential-provider-process': 3.972.84
+      '@aws-sdk/credential-provider-sso': 3.973.28
+      '@aws-sdk/credential-provider-web-identity': 3.972.90
+      '@aws-sdk/nested-clients': 3.998.3
+      '@aws-sdk/types': 3.975.1
+      '@smithy/core': 3.41.0
       '@smithy/credential-provider-imds': 4.5.2
-      '@smithy/types': 4.19.0
+      '@smithy/types': 4.20.0
       tslib: 2.8.1
 
   '@aws-sdk/eventstream-codec@3.370.0':
@@ -1870,8 +1855,8 @@ snapshots:
 
   '@aws-sdk/util-endpoints@3.996.49':
     dependencies:
-      '@aws-sdk/core': 3.978.5
-      '@smithy/core': 3.36.2
+      '@aws-sdk/core': 3.981.0
+      '@smithy/core': 3.41.0
       tslib: 2.8.1
 
   '@aws-sdk/util-hex-encoding@3.310.0':
@@ -2325,7 +2310,7 @@ snapshots:
 
   '@smithy/protocol-http@5.6.2':
     dependencies:
-      '@smithy/core': 3.36.2
+      '@smithy/core': 3.41.0
       tslib: 2.8.1
 
   '@smithy/querystring-builder@2.2.0':
@@ -2466,7 +2451,7 @@ snapshots:
 
   '@smithy/util-utf8@4.5.2':
     dependencies:
-      '@smithy/core': 3.36.2
+      '@smithy/core': 3.41.0
       tslib: 2.8.1
 
   '@stablelib/base64@1.0.1': {}
@@ -2600,21 +2585,21 @@ snapshots:
       '@fastify/error': 4.2.1
       fastq: 1.20.3
 
-  bedrock-agentcore@0.4.7(@strands-agents/sdk@1.26.0(@anthropic-ai/sdk@1.11.0(zod@4.6.7))(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7)):
+  bedrock-agentcore@0.5.0(@strands-agents/sdk@1.26.0(@anthropic-ai/sdk@1.11.0(zod@4.6.7))(@modelcontextprotocol/client@2.3.1)(@opentelemetry/api@1.10.0)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.10.0))(@smithy/types@4.19.0)(zod@4.6.7)):
     dependencies:
       '@aws-crypto/sha256-js': 5.2.0
-      '@aws-sdk/client-bedrock-agentcore': 3.1156.0
+      '@aws-sdk/client-bedrock-agentcore': 3.1173.0
       '@aws-sdk/client-bedrock-agentcore-control': 3.1156.0
       '@aws-sdk/credential-providers': 3.1156.0
       '@aws-sdk/protocol-http': 3.370.0
       '@aws-sdk/signature-v4': 3.370.0
-      '@aws-sdk/types': 3.975.0
+      '@aws-sdk/types': 3.975.1
       '@aws-sdk/util-endpoints': 3.996.49
       '@fastify/sse': 0.4.0(fastify@5.12.7)
       '@fastify/websocket': 11.3.4
       '@smithy/protocol-http': 5.6.2
-      '@smithy/signature-v4': 5.7.4
-      '@smithy/types': 4.19.0
+      '@smithy/signature-v4': 5.7.5
+      '@smithy/types': 4.20.0
       '@smithy/util-utf8': 4.5.2
       '@types/ws': 8.18.2
       fastify: 5.12.7
