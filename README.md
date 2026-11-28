@@ -37,9 +37,9 @@ const app = new BedrockAgentCoreApp({
 app.run();
 ```
 
-The Agent is yours to choose, one payload at a time. An agent with approval tools keeps the interrupted runs it needs to resume; [`examples/agent`](examples/agent) keeps them in a `Map` in its entrypoint, under the interrupt ids Welt sends back, and takes the whole stop out of it when the answers arrive.
+The Agent is yours to choose, one payload at a time. An agent with approval tools keeps the interrupted runs it needs to resume; [`examples/agent`](examples/agent) keeps each one in an S3 bucket as a Strands snapshot, written when its interrupts stream out and removed when their answers arrive, so that the answers can resume it in whichever process receives them.
 
-To see it in Slack, run the file (`node main.ts`). It serves on port 8080, where Welt's local mode reaches it, so follow [Welt's Quick Start](https://github.com/iwamot/welt#quick-start) with this file in place of the example agent. To deploy, follow the example's [Deploy](examples/agent#deploy) section with this file in place of the downloaded `main.ts`, then point Welt's `AGENT_ARN` at the runtime.
+To see it in Slack, run the file (`node main.ts`). It serves on port 8080, where Welt's local mode reaches it, so follow [Welt's Quick Start](https://github.com/iwamot/welt#quick-start) with this file in place of the example agent. To deploy, follow the example's [AgentCore Runtime](examples/agent#deploy-to-agentcore-runtime) section with this file in place of the downloaded `main.ts`, then point Welt's `AGENT_ARN` at the runtime. On [Lambda Web Functions](examples/agent#deploy-to-aws-lambda-web-functions), the file also has to serve on the address the runtime names in `AWS_LAMBDA_HTTP_ENDPOINT`, as the example's does; point Welt's `AGENT_URL` at the Web Function.
 
 See [`examples/agent`](examples/agent) for the full version — the smallest complete agent built on this package (text streaming, tool use, file output, file input, and human-approval tools). The sections below cover `startReply` and the adapters it wires in.
 
