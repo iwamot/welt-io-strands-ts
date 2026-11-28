@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1178.0",
     "@strands-agents/sdk": "1.26.0",
     "@welt-io/strands": "workspace:*",
     "bedrock-agentcore": "0.5.0",

@@ -6,8 +6,11 @@
  * emits each one as SSE, which Welt (https://github.com/iwamot/welt)
  * renders into Slack. `startReply` reads which
  * envelope Welt sent (a conversation turn, or the answers that resume an
- * interrupted run) and drives the agent; the `interrupted` map below
- * keeps each interrupted run until its answers arrive.
+ * interrupted run) and drives the Agent this file hands it.
+ *
+ * Which Agent that is, this file decides — including keeping an
+ * interrupted run in S3 until its buttons are answered, below, so that the
+ * answers can resume it wherever they arrive.
  *
  * This example is a standalone deployable; Welt drives it only through
  * the JSON wire contract, which @welt-io/strands adapts in both
@@ -16,7 +19,20 @@
 
 import { Buffer } from "node:buffer";
 import { randomUUID } from "node:crypto";
-import { Agent, BedrockModel, tool } from "@strands-agents/sdk";
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  NoSuchKey,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
+import {
+  Agent,
+  BedrockModel,
+  type LocalAgent,
+  type Snapshot,
+  tool,
+} from "@strands-agents/sdk";
 import {
   interruptReason,
   renderableEvents,
@@ -110,9 +126,9 @@ const sampleDangerousAction = tool({
   },
 });
 
-// Draft bodies by tool use id, dropped as soon as their tool call is
-// answered.
-const drafts = new Map<string, string>();
+// Draft bodies by tool use id, kept in the agent's state and dropped as
+// soon as their tool call is answered.
+type DraftState = { drafts: Record<string, string> };
 
 /**
  * Draft the report body once per tool call.
@@ -121,18 +137,23 @@ const drafts = new Map<string, string>();
  * its start on resume, and drafting is the kind of work that must not run
  * twice — a redraft (timestamped here to make that visible) would silently
  * publish something other than what the human approved. The tool use id is
- * the same on both passes, and the cache outlives neither more nor less
- * than the interrupt state it pairs with: both live in this process.
+ * the same on both passes, and the drafts live in the agent's state, which
+ * is held and restored with the interrupt state it pairs with.
  */
-function draftedReport(toolUseId: string, topic: string): string {
-  const drafted = drafts.get(toolUseId);
+function draftedReport(
+  agent: LocalAgent,
+  toolUseId: string,
+  topic: string,
+): string {
+  const drafts = agent.appState.get<DraftState>("drafts") ?? {};
+  const drafted = drafts[toolUseId];
   if (drafted !== undefined) {
     return drafted;
   }
   const draft =
     `# ${topic}\n\nEverything about ${topic} is going well.\n\n` +
     `_Drafted at ${new Date().toISOString()}._\n`;
-  drafts.set(toolUseId, draft);
+  agent.appState.set("drafts", { ...drafts, [toolUseId]: draft });
   return draft;
 }
 
@@ -150,7 +171,7 @@ const sampleDraftReport = tool({
       throw new Error("This tool needs its execution context to interrupt.");
     }
     const toolUseId = context.toolUse.toolUseId;
-    const draft = draftedReport(toolUseId, input.topic);
+    const draft = draftedReport(context.agent, toolUseId, input.topic);
     const answer = context.interrupt<string>({
       name: "example-draft-report-approval",
       reason: interruptReason({
@@ -159,7 +180,9 @@ const sampleDraftReport = tool({
         input: { label: "Or type your answer" },
       }),
     });
-    drafts.delete(toolUseId);
+    const { [toolUseId]: _answered, ...rest } =
+      context.agent.appState.get<DraftState>("drafts") ?? {};
+    context.agent.appState.set("drafts", rest);
     if (answer === "Publish") {
       const name = documentName("report");
       return [
@@ -204,35 +227,87 @@ function newAgent(): Agent {
   });
 }
 
-// The Agents whose runs stopped for human input, under the ids of the
-// interrupts they raised — Welt sends those ids back when the buttons are
-// answered. An entry lives as long as this process: AgentCore Runtime
-// gives each session its own microVM, so a resume that arrives after it
-// was recycled finds nothing and throws, which Welt renders as its
-// resume-failure notice.
-const interrupted = new Map<string, Agent>();
+// The interrupted runs, held in S3 under the ids of the interrupts they
+// raised — Welt sends those ids back when the buttons are answered, and the
+// request that carries them may reach another process or machine than the
+// one that stopped.
+const bucket = process.env.SESSION_BUCKET;
+if (!bucket) {
+  throw new Error(
+    "SESSION_BUCKET must name the bucket that holds interrupted runs.",
+  );
+}
+// The bucket may be in another region than the agent; follow S3 there.
+const s3 = new S3Client({ followRegionRedirects: true });
+
+function heldKey(interruptId: string): string {
+  return `interrupted/${interruptId}.json`;
+}
 
 /**
- * Take the Agent the answered interrupts belong to.
+ * Keep a stopped run until its interrupts are answered.
+ *
+ * The snapshot carries the run's messages, its state and where it stopped;
+ * the tools and the model are this file's, and are built again on resume.
+ * Every id of the stop gets the same snapshot, since the answers name any
+ * of them.
+ */
+async function hold(agent: Agent, interruptIds: string[]): Promise<void> {
+  const snapshot = agent.takeSnapshot({
+    preset: "session",
+    appData: { interruptIds },
+  });
+  const body = JSON.stringify(snapshot);
+  await Promise.all(
+    interruptIds.map((id) =>
+      s3.send(
+        new PutObjectCommand({ Bucket: bucket, Key: heldKey(id), Body: body }),
+      ),
+    ),
+  );
+}
+
+/** Read the snapshot held under an interrupt id, if one is held. */
+async function heldBody(interruptId: string): Promise<string | undefined> {
+  try {
+    const held = await s3.send(
+      new GetObjectCommand({ Bucket: bucket, Key: heldKey(interruptId) }),
+    );
+    return await held.Body?.transformToString();
+  } catch (error) {
+    if (error instanceof NoSuchKey) {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Take the held run the answered interrupts belong to.
  *
  * A stop's questions are answered together, so every id in one payload
- * names the same run: the first answered id that still holds an Agent
- * names it. The whole stop leaves the map with it — every id holding
- * that Agent is deleted, not just the ones the payload answered.
+ * names the same run, and the whole stop is dropped here. An answered id
+ * no longer held means the run was answered already or cleared, and there
+ * is nothing to resume.
  */
-function takeInterrupted(answers: Record<string, unknown>): Agent {
-  const agent = Object.keys(answers)
-    .map((id) => interrupted.get(id))
-    .find((held) => held !== undefined);
-  if (agent === undefined) {
-    throw new Error("No interrupted agent to resume in this session.");
-  }
-  for (const [id, held] of interrupted) {
-    if (held === agent) {
-      interrupted.delete(id);
+async function resumed(answers: Record<string, unknown>): Promise<Agent> {
+  for (const answeredId of Object.keys(answers)) {
+    const body = await heldBody(answeredId);
+    if (body === undefined) {
+      continue;
     }
+    const snapshot: Snapshot = JSON.parse(body);
+    const agent = newAgent();
+    agent.loadSnapshot(snapshot);
+    const stoppedIds = snapshot.appData.interruptIds as string[];
+    await Promise.all(
+      stoppedIds.map((id) =>
+        s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: heldKey(id) })),
+      ),
+    );
+    return agent;
   }
-  return agent;
+  throw new Error("No interrupted agent to resume in this session.");
 }
 
 const app = new BedrockAgentCoreApp({
@@ -242,22 +317,35 @@ const app = new BedrockAgentCoreApp({
         interrupt_responses?: Record<string, unknown>;
       };
       const answers = envelope.interrupt_responses;
-      const agent =
-        answers === undefined ? newAgent() : takeInterrupted(answers);
+      const agent = answers === undefined ? newAgent() : await resumed(answers);
 
+      const interruptIds: string[] = [];
       for await (const event of renderableEvents(startReply(agent, payload), {
         filesFrom: FILES_FROM,
       })) {
         if ("interrupt" in event) {
-          // The run stopped here; this Agent is what resumes it.
-          interrupted.set(event.interrupt.id, agent);
+          interruptIds.push(event.interrupt.id);
         }
         // The AgentCore Runtime SDK puts a yielded object's `data` field
         // on the SSE `data:` line.
         yield { data: event };
       }
+      if (interruptIds.length > 0) {
+        await hold(agent, interruptIds);
+      }
     },
   },
 });
 
-app.run();
+// Lambda Web Functions name the address to serve on, as host:port; AgentCore
+// Runtime, and a local run, take the SDK's default of port 8080.
+const lambdaEndpoint = process.env.AWS_LAMBDA_HTTP_ENDPOINT;
+if (lambdaEndpoint) {
+  const colon = lambdaEndpoint.lastIndexOf(":");
+  app.run({
+    host: lambdaEndpoint.slice(0, colon),
+    port: Number(lambdaEndpoint.slice(colon + 1)),
+  });
+} else {
+  app.run();
+}
